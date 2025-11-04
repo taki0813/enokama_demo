@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>江ノ島・鎌倉 AI観光ルート生成 - デモ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        #map { height: 420px; border-radius: 1rem; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-blue-50 min-h-screen">
+    <div id="app" class="max-w-md mx-auto pb-20">
+        <div id="intro-screen" class="p-4 space-y-8 pt-12">
+            <div class="text-center space-y-6">
+                <div class="relative inline-block">
+                    <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg">
+                        <svg class="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                    <div class="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                        <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">江ノ島・鎌倉</h1>
+                    <h2 class="text-xl font-semibold text-gray-700">AI観光ルート生成</h2>
+                    <p class="text-sm text-gray-500 bg-white/60 backdrop-blur-sm rounded-full px-4 py-2 inline-block">中央大学岡嶋ゼミ × 神奈川県観光協会</p>
+                </div>
+            </div>
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6">
+                    <h3 class="flex items-center gap-3 text-xl font-bold">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        プロジェクトについて
+                    </h3>
+                </div>
+                <div class="p-6 space-y-6">
+                    <p class="text-gray-600 text-center">あなたの好みに合わせて最適な観光ルートを自動生成します。</p>
+                    <div class="grid gap-4">
+                        <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl"><div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center"><svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div><div><h4 class="font-semibold text-gray-800 text-base">AIパーソナライズ</h4><p class="text-sm text-gray-600 mt-1">診断結果に基づいて、あなただけの観光プランを生成</p></div></div>
+                        <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl"><div class="w-12 h-12 bg-green-500 rounded-2xl flex items-center justify-center"><svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><h4 class="font-semibold text-gray-800 text-base">リアルタイムチェックイン</h4><p class="text-sm text-gray-600 mt-1">GPS連動で観光地を訪問してポイントを獲得</p></div></div>
+                        <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-2xl"><div class="w-12 h-12 bg-yellow-500 rounded-2xl flex items-center justify-center"><svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg></div><div><h4 class="font-semibold text-gray-800 text-base">特典クーポン</h4><p class="text-sm text-gray-600 mt-1">観光地での割引や特典を即座に獲得</p></div></div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="startDiagnosis()" class="w-full bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white py-6 text-lg font-semibold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105">AI観光ルート生成を開始</button>
+        </div>
+
+        <div id="diagnosis-screen" class="hidden p-4 space-y-6 pt-8">
+            <div class="text-center space-y-4">
+                <div class="relative inline-block"><div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg"><svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center"><span id="step-number" class="text-xs font-bold text-white">1</span></div></div>
+                <div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">江ノ島・鎌倉観光ガイド</h1><p class="text-gray-600 mt-2">あなたにぴったりの観光プランを診断します</p></div>
+            </div>
+            <div class="space-y-3"><div class="flex justify-between text-sm text-gray-600"><span class="font-medium">診断進行状況</span><span class="bg-white/60 backdrop-blur-sm px-3 py-1 rounded-full"><span id="step-progress">1</span> / <span id="total-steps">10</span></span></div><div class="bg-white/60 backdrop-blur-sm rounded-full p-1"><div id="progress-bar" class="h-3 bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-300" style="width: 9%"></div></div></div>
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden"><div class="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6"><h2 id="question-title" class="text-xl font-bold">性別を教えてください</h2></div><div id="question-content" class="p-6"></div></div>
+            <div class="flex gap-4">
+                <button id="back-btn" onclick="previousStep()" class="hidden flex-1 h-12 rounded-2xl border-2 border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">戻る</button>
+                <button id="next-btn" onclick="nextStep()" class="flex-1 h-12 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:transform-none">次へ</button>
+            </div>
+        </div>
+
+        <div id="loading-screen" class="hidden p-4 pt-20"><div class="text-center space-y-8"><div class="relative inline-block"><div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg"><div class="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div></div></div><div class="space-y-3"><h2 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">AIが観光プランを生成中...</h2><p class="text-gray-600">あなたの好みを分析して最適なルートを提案しています</p></div></div></div>
+
+        <div id="results-screen" class="hidden p-4 space-y-6 pt-8">
+            <div class="text-center space-y-4"><div class="relative inline-block"><div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg"><svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg></div></div><div><h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">あなたにおすすめの観光プラン</h1><p class="text-gray-600 mt-2">診断結果に基づいて最適なルートをご提案します</p></div></div>
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6"><h2 class="flex items-center gap-3 text-xl font-bold"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span id="area-title">江ノ島・鎌倉</span> 観光コース</h2><div class="text-blue-100 mt-2" id="travel-style-text">ゆったりと楽しむコース</div></div>
+                <div class="p-6 space-y-6">
+                    <div class="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-2xl"><svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="font-semibold">所要時間: 約3時間45分</span></div>
+                    <div id="spots-list" class="space-y-4"></div>
+                </div>
+            </div>
+            <div class="space-y-4"><button onclick="showScreen('map')" class="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105">地図で詳細ルートを見る</button><button onclick="showScreen('coupons')" class="w-full h-14 border-2 border-green-500 text-green-600 hover:bg-green-50 hover:border-green-600 rounded-2xl transition-all duration-200">クーポンを見る</button></div>
+        </div>
+
+        <div id="map-screen" class="hidden p-4 space-y-4 pt-8">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-800">地図でルートを確認</h2>
+                <button onclick="showScreen('results')" class="text-blue-600 underline">プランに戻る</button>
+            </div>
+            <div id="map" class="bg-gray-200"></div>
+            <div class="text-xs text-gray-500">地図: © OpenStreetMap contributors</div>
+        </div>
+
+        <div id="coupons-screen" class="hidden p-4 space-y-4 pt-8">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-800">獲得クーポン</h2>
+                <button onclick="showScreen('results')" class="text-blue-600 underline">プランに戻る</button>
+            </div>
+            <div id="coupon-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <div id="nav-bar" class="hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 z-50">
+        <div class="max-w-md mx-auto flex justify-around">
+            <button onclick="showScreen('intro')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="text-xs font-medium">ホーム</span></button>
+            <button onclick="showScreen('diagnosis')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs font-medium">診断</span></button>
+            <button onclick="showScreen('results')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg><span class="text-xs font-medium">プラン</span></button>
+            <button onclick="showScreen('map')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="text-xs font-medium">地図</span></button>
+            <button onclick="showScreen('coupons')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg><span class="text-xs font-medium">クーポン</span></button>
+        </div>
+    </div>
+
+    <script>
+        const DEMO_PLAN = [
+            { id: "enoshima-shrine", name: "江島神社", description: "縁結びで有名な神社。海を望む絶景スポットとして人気。", duration: 60, entrance_fee: 0, tags: ["縁結び", "絶景", "写真映え"], tips: ["エスカーを利用すると楽に登れます"], startTime: "10:00", endTime: "11:00", order: 1, lat: 35.2993, lng: 139.4804 },
+            { id: "enoshima-sea-candle", name: "江ノ島シーキャンドル", description: "展望台からの360度パノラマビューが楽しめる灯台。", duration: 45, entrance_fee: 500, tags: ["絶景", "展望台"], tips: ["夕日と夜景の両方が楽しめる時間帯がおすすめ"], startTime: "11:15", endTime: "12:00", order: 2, lat: 35.2985, lng: 139.4798 },
+            { id: "enoshima-aquarium", name: "新江ノ島水族館", description: "相模湾の海をテーマにした水族館。イルカショーが人気。", duration: 120, entrance_fee: 2500, tags: ["水族館"], tips: ["イルカショーの時間を事前にチェック"], startTime: "13:00", endTime: "15:00", order: 3, lat: 35.3067, lng: 139.4804 },
+        ];
+
+        const DEMO_COUPONS = [
+            { id: "c1", title: "エスカー割引券", description: "エスカー利用料金10%OFF", discount: "10%OFF", validUntil: "2025-12-31", spotName: "江島神社", used: false },
+            { id: "c2", title: "セット券割引", description: "シーキャンドル＋コッキング苑100円OFF", discount: "100円OFF", validUntil: "2025-12-31", spotName: "江ノ島シーキャンドル", used: false },
+            { id: "c3", title: "入場料割引券", description: "大人入場料200円OFF", discount: "200円OFF", validUntil: "2025-12-31", spotName: "新江ノ島水族館", used: false },
+        ];
+
+        const STEPS = [
+            { title: "性別を教えてください", key: "gender", options: [{value:"male",label:"男性"},{value:"female",label:"女性"},{value:"other",label:"その他"}] },
+            { title: "年齢層を教えてください", key: "age", options: [{value:"10s",label:"10代"},{value:"20s",label:"20代"},{value:"30s",label:"30代"},{value:"40s",label:"40代"},{value:"50s",label:"50代以上"}] },
+            { title: "絶対に行きたい場所はありますか？", key: "mustVisit", options: [{value:"enoshima",label:"江ノ島"},{value:"kamakura",label:"鎌倉"},{value:"both",label:"両方"},{value:"undecided",label:"まだ決めていない"}] },
+            { title: "旅行スタイルを教えてください", key: "travelStyle", options: [{value:"relaxed",label:"ゆっくり観光"},{value:"active",label:"アクティブに回る"},{value:"cultural",label:"文化・歴史重視"},{value:"gourmet",label:"グルメ重視"}] },
+            { title: "観光開始場所を教えてください", key: "startLocation", options: [{value:"enoshima_station",label:"江ノ島駅"},{value:"kamakura_station",label:"鎌倉駅"},{value:"fujisawa_station",label:"藤沢駅"},{value:"other",label:"その他（自由記述）"}] },
+            { title: "その他の場合は開始場所を教えてください", key: "customStartLocation", isCustomInput: true, condition: (d)=>d.startLocation === 'other' },
+            { title: "観光開始時間を教えてください", key: "startTime", isTimeInput: true },
+            { title: "帰路につく時間を教えてください", key: "endTime", isTimeInput: true },
+            { title: "やりたいことを自由に教えてください", key: "whatToDo", isCustomInput: true, isOptional: true },
+            { title: "特に行きたい場所があれば教えてください", key: "customSpot", isCustomInput: true, isOptional: true }
+        ];
+
+        let currentStep = 0;
+        let diagnosisData = {};
+        let mapInstance = null;
+        let mapReady = false;
+
+        function startDiagnosis() {
+            showScreen('diagnosis');
+            renderQuestion();
+            // 合計ステップ数を動的に反映
+            const total = document.getElementById('total-steps');
+            if (total) total.textContent = String(STEPS.length);
+        }
+
+        function renderQuestion() {
+            const step = STEPS[currentStep];
+            if (step.condition && !step.condition(diagnosisData)) { currentStep++; return renderQuestion(); }
+            document.getElementById('question-title').textContent = step.title;
+            document.getElementById('step-number').textContent = currentStep + 1;
+            document.getElementById('step-progress').textContent = currentStep + 1;
+            document.getElementById('progress-bar').style.width = ((currentStep + 1) / STEPS.length * 100) + '%';
+            const content = document.getElementById('question-content');
+            content.innerHTML = '';
+            if (step.isCustomInput) {
+                const input = document.createElement('input');
+                input.type = 'text'; input.className = 'w-full h-12 rounded-2xl border-2 border-gray-200 focus:border-blue-500 transition-colors px-4';
+                input.placeholder = step.key === 'customStartLocation' ? '例: 新宿駅、横浜駅、自宅住所など' : step.key === 'whatToDo' ? '例: 写真を撮りたい、歴史を学びたい など' : '例: 江島神社の奥津宮 など';
+                input.value = diagnosisData[step.key] || '';
+                input.oninput = (e)=>{ diagnosisData[step.key] = e.target.value; updateNextButton(); };
+                content.appendChild(input);
+                const p = document.createElement('p'); p.className = 'text-xs text-gray-500 text-center mt-4'; p.textContent = step.isOptional ? '（任意項目）空欄でも提案します' : '自由に入力してください'; content.appendChild(p);
+            } else if (step.isTimeInput) {
+                const input = document.createElement('input'); input.type = 'time'; input.className = 'w-full h-12 rounded-2xl border-2 border-gray-200 focus:border-blue-500 transition-colors text-center text-lg';
+                input.value = diagnosisData[step.key] || '';
+                input.onchange = (e)=>{ diagnosisData[step.key] = e.target.value; updateNextButton(); };
+                content.appendChild(input);
+            } else {
+                const group = document.createElement('div'); group.className = 'space-y-3';
+                step.options.forEach(opt=>{
+                    const label = document.createElement('label'); label.className = 'flex items-center space-x-4 p-4 rounded-2xl border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all duration-200';
+                    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = step.key; radio.value = opt.value; radio.className = 'peer sr-only'; radio.checked = diagnosisData[step.key] === opt.value;
+                    radio.onchange = ()=>{ diagnosisData[step.key] = opt.value; updateNextButton(); document.querySelectorAll(`input[name="${step.key}"]`).forEach(r=>{ const lbl = r.closest('label'); if (r.checked) { lbl.classList.add('border-blue-300','bg-blue-50'); } else { lbl.classList.remove('border-blue-300','bg-blue-50'); } }); };
+                    const outer = document.createElement('div'); outer.className = 'w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-500 peer-checked:bg-blue-500 flex items-center justify-center transition-colors';
+                    const inner = document.createElement('div'); inner.className = 'w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity';
+                    outer.appendChild(inner);
+                    const span = document.createElement('span'); span.className = 'text-gray-700 font-medium flex-1 peer-checked:text-blue-500 transition-colors'; span.textContent = opt.label;
+                    label.appendChild(radio); label.appendChild(outer); label.appendChild(span); group.appendChild(label);
+                });
+                content.appendChild(group);
+            }
+            updateNextButton();
+            document.getElementById('back-btn').classList.toggle('hidden', currentStep === 0);
+        }
+
+        function updateNextButton() {
+            const step = STEPS[currentStep]; const btn = document.getElementById('next-btn');
+            if (step.isOptional || step.isCustomInput) btn.disabled = false; else if (step.isTimeInput) btn.disabled = !diagnosisData[step.key]; else btn.disabled = !diagnosisData[step.key];
+            btn.textContent = currentStep === STEPS.length - 1 ? '診断結果を見る' : '次へ';
+        }
+
+        function nextStep() { if (currentStep < STEPS.length - 1) { currentStep++; renderQuestion(); } else { generatePlan(); } }
+        function previousStep() { if (currentStep > 0) { currentStep--; renderQuestion(); } }
+
+        function generatePlan() {
+            showOnly('loading');
+            setTimeout(()=>{ showScreen('results'); renderResults(); }, 2000);
+        }
+
+        function renderResults() {
+            const areaTitle = document.getElementById('area-title');
+            areaTitle.textContent = diagnosisData.mustVisit === 'enoshima' ? '江ノ島' : diagnosisData.mustVisit === 'kamakura' ? '鎌倉' : '江ノ島・鎌倉';
+            const travelStyleText = document.getElementById('travel-style-text');
+            const styles = { relaxed: 'ゆったりと楽しむコース', active: 'アクティブに回るコース', cultural: '文化・歴史を感じるコース', gourmet: 'グルメを堪能するコース' };
+            travelStyleText.textContent = styles[diagnosisData.travelStyle] || 'ゆったりと楽しむコース';
+            const list = document.getElementById('spots-list'); list.innerHTML = '';
+            DEMO_PLAN.forEach((spot, i)=>{
+                const div = document.createElement('div'); div.className = 'relative fade-in'; div.style.animationDelay = (i*0.05)+'s';
+                div.innerHTML = `<div class="flex items-start gap-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl border border-gray-200"><div class="flex flex-col items-center"><div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">${spot.order}</div>${i < DEMO_PLAN.length - 1 ? '<div class=\"w-1 h-12 bg-gradient-to-b from-blue-300 to-green-300 mt-2 rounded-full\"></div>' : ''}</div><div class="flex-1"><div class="flex items-center gap-2 mb-2"><h4 class="font-semibold text-gray-800 text-lg">${spot.name}</h4></div><p class="text-sm text-gray-600 mb-3 leading-relaxed">${spot.description}</p><div class="flex items-center gap-4 text-xs text-gray-500 mb-3"><span class="bg-white px-3 py-1 rounded-full">滞在時間: ${spot.duration}分</span>${spot.entrance_fee > 0 ? `<span class=\"bg-white px-3 py-1 rounded-full\">入場料: ${spot.entrance_fee}円</span>` : ''}${spot.startTime && spot.endTime ? `<span class=\"bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold\">${spot.startTime} - ${spot.endTime}</span>` : ''}</div></div></div>`;
+                list.appendChild(div);
+            });
+            renderCoupons();
+        }
+
+        function renderCoupons() {
+            const container = document.getElementById('coupon-list'); if (!container) return; container.innerHTML = '';
+            DEMO_COUPONS.forEach(c=>{
+                const row = document.createElement('button'); row.type = 'button'; row.className = 'w-full text-left p-3 bg-white rounded-xl border hover:bg-gray-50 transition';
+                row.innerHTML = `<div class=\"flex items-center justify-between\"><div><div class=\"text-sm font-medium text-gray-800\">${c.title}</div><div class=\"text-xs text-gray-500\">${c.spotName}</div></div><div class=\"text-right\"><div class=\"text-sm font-bold ${c.used ? 'text-gray-500' : 'text-green-600'}\">${c.discount}</div><div class=\"text-xs text-gray-400\">〜${c.validUntil}</div></div></div>`;
+                row.addEventListener('click', ()=> openCouponDetail(c.id));
+                container.appendChild(row);
+            });
+        }
+
+        function openCouponDetail(id) {
+            const c = DEMO_COUPONS.find(x=>x.id===id); if (!c) return;
+            // 画面生成
+            let detail = document.getElementById('coupon-detail-screen');
+            if (!detail) {
+                detail = document.createElement('div');
+                detail.id = 'coupon-detail-screen';
+                detail.className = 'hidden p-4 space-y-4 pt-8';
+                detail.innerHTML = `
+                    <div class=\"flex items-center justify-between\">
+                        <h2 class=\"text-xl font-bold text-gray-800\">クーポン詳細</h2>
+                        <button id=\"coupon-detail-back\" class=\"text-blue-600 underline\">一覧に戻る</button>
+                    </div>
+                    <div class=\"bg-white rounded-2xl border p-5 space-y-3\">
+                        <div class=\"text-lg font-semibold text-gray-800\" id=\"cd-title\"></div>
+                        <div class=\"text-sm text-gray-500\" id=\"cd-spot\"></div>
+                        <div class=\"text-sm text-gray-700\" id=\"cd-desc\"></div>
+                        <div class=\"flex items-center justify-between\">
+                            <div class=\"text-base font-bold text-green-600\" id=\"cd-discount\"></div>
+                            <div class=\"text-xs text-gray-500\" id=\"cd-valid\"></div>
+                        </div>
+                        <div id=\"cd-status\" class=\"text-sm\"></div>
+                        <button id=\"cd-use\" class=\"w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition\">使う</button>
+                    </div>
+                `;
+                document.getElementById('app').appendChild(detail);
+                detail.querySelector('#coupon-detail-back').addEventListener('click', ()=> showScreen('coupons'));
+                detail.querySelector('#cd-use').addEventListener('click', ()=> confirmUseCurrentCoupon());
+            }
+            // 値反映
+            detail.dataset.couponId = c.id;
+            detail.querySelector('#cd-title').textContent = c.title;
+            detail.querySelector('#cd-spot').textContent = `対象: ${c.spotName}`;
+            detail.querySelector('#cd-desc').textContent = c.description;
+            detail.querySelector('#cd-discount').textContent = c.discount;
+            detail.querySelector('#cd-valid').textContent = `有効期限: ${c.validUntil}`;
+            const status = detail.querySelector('#cd-status');
+            const useBtn = detail.querySelector('#cd-use');
+            if (c.used) {
+                status.textContent = 'このクーポンは使用済みです';
+                status.className = 'text-sm text-gray-500';
+                useBtn.setAttribute('disabled', 'true');
+                useBtn.className = 'w-full h-11 rounded-xl text-white bg-gray-400 cursor-not-allowed';
+                useBtn.textContent = '使用済み';
+            } else {
+                status.textContent = '';
+                useBtn.removeAttribute('disabled');
+                useBtn.className = 'w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition';
+                useBtn.textContent = '使う';
+            }
+            showOnly('coupon-detail');
+        }
+
+        function confirmUseCurrentCoupon() {
+            const detail = document.getElementById('coupon-detail-screen'); if (!detail) return;
+            const id = detail.dataset.couponId; const c = DEMO_COUPONS.find(x=>x.id===id); if (!c || c.used) return;
+            const yes = window.confirm('本当にこのクーポンを使いますか？一度使用済みにすると戻せません。');
+            if (!yes) return;
+            c.used = true; // 不可逆
+            openCouponDetail(id); // 画面を再描画
+        }
+
+        const TRANSIT_INFO = [
+            {
+                from: '江島神社', to: '江ノ島シーキャンドル',
+                steps: [
+                    { mode: 'walk', text: '徒歩 10分（江島神社 → サムエル・コッキング苑）' }
+                ]
+            },
+            {
+                from: '江ノ島シーキャンドル', to: '新江ノ島水族館',
+                steps: [
+                    { mode: 'walk', text: '徒歩 5分（シーキャンドル → 降り口）' },
+                    { mode: 'bus', text: '江ノ電バス 12:10 発 → 12:18 着（片道IC 210円）' },
+                    { mode: 'walk', text: '徒歩 2分（水族館入口へ）' }
+                ]
+            }
+        ];
+
+        function renderTransitInfo() {
+            const containerId = 'transit-info';
+            let container = document.getElementById(containerId);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'space-y-3';
+                document.getElementById('map-screen').appendChild(container);
+            }
+            container.innerHTML = '';
+            TRANSIT_INFO.forEach(seg => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl border p-4';
+                card.innerHTML = `<div class=\"text-sm font-medium text-gray-800 mb-2\">${seg.from} → ${seg.to}</div>`;
+                seg.steps.forEach(s => {
+                    const row = document.createElement('div');
+                    row.className = 'text-xs text-gray-600 flex items-center gap-2';
+                    const icon = s.mode === 'walk' ? '🚶' : s.mode === 'bus' ? '🚌' : 'ℹ️';
+                    row.innerHTML = `<span>${icon}</span><span>${s.text}</span>`;
+                    card.appendChild(row);
+                });
+                container.appendChild(card);
+            });
+        }
+
+        function initMapOnce() {
+            if (mapReady) return; mapReady = true;
+            const center = [35.3005, 139.4802];
+            mapInstance = L.map('map').setView(center, 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapInstance);
+            const latlngs = DEMO_PLAN.map(p=>[p.lat, p.lng]);
+            const markers = DEMO_PLAN.map((p,i)=> L.marker([p.lat,p.lng]).addTo(mapInstance).bindPopup(`${i+1}. ${p.name}`));
+            const line = L.polyline(latlngs, {color: '#2563eb'}).addTo(mapInstance);
+            mapInstance.fitBounds(line.getBounds(), { padding: [20,20] });
+            renderTransitInfo();
+        }
+
+        function showOnly(key) {
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('diagnosis-screen').classList.add('hidden');
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('map-screen').classList.add('hidden');
+            document.getElementById('coupons-screen').classList.add('hidden');
+            const map = { intro:'intro-screen', diagnosis:'diagnosis-screen', loading:'loading-screen', results:'results-screen', map:'map-screen', coupons:'coupons-screen', 'coupon-detail':'coupon-detail-screen' };
+            const id = map[key]; if (id) document.getElementById(id).classList.remove('hidden');
+        }
+
+        function showScreen(screen) {
+            showOnly(screen);
+            const nav = document.getElementById('nav-bar');
+            if (screen === 'intro') nav.classList.add('hidden'); else nav.classList.remove('hidden');
+            if (screen === 'map') { setTimeout(()=>{ initMapOnce(); mapInstance && mapInstance.invalidateSize(); }, 50); }
+            if (screen === 'coupons') { renderCoupons(); }
+            if (screen === 'results') { renderResults(); }
+        }
+    </script>
+</body>
+</html>
+
+
