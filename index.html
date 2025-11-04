@@ -89,6 +89,7 @@
             </div>
             <div id="map" class="bg-gray-200"></div>
             <div class="text-xs text-gray-500">地図: © OpenStreetMap contributors</div>
+            <div id="transit-info" class="space-y-3"></div>
         </div>
 
         <div id="coupons-screen" class="hidden p-4 space-y-4 pt-8">
@@ -97,6 +98,24 @@
                 <button onclick="showScreen('results')" class="text-blue-600 underline">プランに戻る</button>
             </div>
             <div id="coupon-list" class="space-y-3"></div>
+        </div>
+
+        <div id="coupon-detail-screen" class="hidden p-4 space-y-4 pt-8">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-800">クーポン詳細</h2>
+                <button onclick="showScreen('coupons')" class="text-blue-600 underline">一覧に戻る</button>
+            </div>
+            <div class="bg-white rounded-2xl border p-5 space-y-3">
+                <div class="text-lg font-semibold text-gray-800" id="cd-title"></div>
+                <div class="text-sm text-gray-500" id="cd-spot"></div>
+                <div class="text-sm text-gray-700" id="cd-desc"></div>
+                <div class="flex items-center justify-between">
+                    <div class="text-base font-bold text-green-600" id="cd-discount"></div>
+                    <div class="text-xs text-gray-500" id="cd-valid"></div>
+                </div>
+                <div id="cd-status" class="text-sm"></div>
+                <button id="cd-use" class="w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition">使う</button>
+            </div>
         </div>
     </div>
 
@@ -112,9 +131,24 @@
 
     <script>
         const DEMO_PLAN = [
-            { id: "enoshima-shrine", name: "江島神社", description: "縁結びで有名な神社。海を望む絶景スポットとして人気。", duration: 60, entrance_fee: 0, tags: ["縁結び", "絶景", "写真映え"], tips: ["エスカーを利用すると楽に登れます"], startTime: "10:00", endTime: "11:00", order: 1, lat: 35.2993, lng: 139.4804 },
-            { id: "enoshima-sea-candle", name: "江ノ島シーキャンドル", description: "展望台からの360度パノラマビューが楽しめる灯台。", duration: 45, entrance_fee: 500, tags: ["絶景", "展望台"], tips: ["夕日と夜景の両方が楽しめる時間帯がおすすめ"], startTime: "11:15", endTime: "12:00", order: 2, lat: 35.2985, lng: 139.4798 },
-            { id: "enoshima-aquarium", name: "新江ノ島水族館", description: "相模湾の海をテーマにした水族館。イルカショーが人気。", duration: 120, entrance_fee: 2500, tags: ["水族館"], tips: ["イルカショーの時間を事前にチェック"], startTime: "13:00", endTime: "15:00", order: 3, lat: 35.3067, lng: 139.4804 },
+            { id: "start-kamakura", name: "JR・江ノ電 鎌倉駅", description: "旅のスタート", duration: 0, entrance_fee: 0, tags: ["スタート"], tips: [], startTime: "10:00", endTime: "10:10", order: 1, lat: 35.3187, lng: 139.5503 },
+            { id: "tsurugaoka", name: "鶴岡八幡宮", description: "【有名】 参拝", duration: 60, entrance_fee: 0, tags: ["神社","参拝"], tips: ["参道の真ん中は神様の通り道。手水舎で身を清め、『二礼二拍手一礼』で参拝。境内での食事・休憩は禁止。"], startTime: "10:10", endTime: "11:10", order: 2, lat: 35.3259, lng: 139.5565 },
+            { id: "komachidori", name: "小町通り", description: "散策", duration: 30, entrance_fee: 0, tags: ["散策","商店街"], tips: ["食べ歩きは自粛推奨。購入品は店舗の指定場所でいただきましょう。"], startTime: "11:10", endTime: "11:40", order: 3, lat: 35.3215, lng: 139.5555 },
+            { id: "to-wadazuka", name: "鎌倉駅 → 和田塚駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "11:40", endTime: "11:50", order: 4, lat: 35.3136, lng: 139.5397 },
+            { id: "wadazuka", name: "和田塚", description: "【マイナー】 史跡見学", duration: 20, entrance_fee: 0, tags: ["史跡"], tips: ["静かな住宅街。大声を出さず、史跡や柵に腰掛けない。"], startTime: "11:50", endTime: "12:10", order: 5, lat: 35.3136, lng: 139.5397 },
+            { id: "hoshinoi", name: "星の井 (ほしのい)", description: "【ピンポイント店】 昼食（そば）", duration: 60, entrance_fee: 0, tags: ["昼食","そば"], tips: ["観光客が少ない場所でゆっくり昼食に最適。長時間の通話は控えめに。"], startTime: "12:10", endTime: "13:10", order: 6, lat: 35.3130, lng: 139.5405 },
+            { id: "to-hase", name: "和田塚駅 → 長谷駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "13:10", endTime: "13:20", order: 7, lat: 35.3127, lng: 139.5360 },
+            { id: "mushinan", name: "無心庵", description: "【ピンポイント店】 休憩・甘味", duration: 60, entrance_fee: 0, tags: ["甘味","休憩"], tips: ["店内や線路付近の撮影は他のお客様と電車の安全に配慮。"], startTime: "13:20", endTime: "14:20", order: 8, lat: 35.3124, lng: 139.5364 },
+            { id: "kotokuin", name: "鎌倉大仏殿 高徳院", description: "【有名】 拝観", duration: 60, entrance_fee: 300, tags: ["寺院","大仏"], tips: ["寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。"], startTime: "14:20", endTime: "15:20", order: 9, lat: 35.3167, lng: 139.5353 },
+            { id: "goryo", name: "御霊神社（ごりょうじんじゃ）", description: "【マイナー】 参拝・江ノ電撮影", duration: 40, entrance_fee: 0, tags: ["神社","撮影"], tips: ["線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。"], startTime: "15:20", endTime: "16:00", order: 10, lat: 35.3139, lng: 139.5358 },
+            { id: "to-inamura", name: "長谷駅 → 稲村ヶ崎駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:00", endTime: "16:10", order: 11, lat: 35.3094, lng: 139.5220 },
+            { id: "inamuragasaki", name: "稲村ヶ崎公園", description: "【マイナービュー】 散策・写真撮影", duration: 40, entrance_fee: 0, tags: ["公園","写真"], tips: ["夕景が特に美しい。ゴミは必ず持ち帰る。"], startTime: "16:10", endTime: "16:50", order: 12, lat: 35.3094, lng: 139.5220 },
+            { id: "to-enoshima-st", name: "稲村ヶ崎駅 → 江ノ島駅", description: "江ノ電で移動", duration: 15, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:50", endTime: "17:05", order: 13, lat: 35.3058, lng: 139.4816 },
+            { id: "walk-enoshima", name: "江ノ島へ移動", description: "徒歩", duration: 30, entrance_fee: 0, tags: ["徒歩"], tips: [], startTime: "17:05", endTime: "17:35", order: 14, lat: 35.3005, lng: 139.4802 },
+            { id: "sea-candle", name: "サムエル・コッキング苑 / シーキャンドル", description: "【有名】 展望・夕景", duration: 60, entrance_fee: 700, tags: ["展望","夕景"], tips: ["イベント期間は21:00まで延長あり。エスカー利用で体力温存。"], startTime: "17:35", endTime: "18:35", order: 15, lat: 35.2986, lng: 139.4799 },
+            { id: "iwaya", name: "江ノ島岩屋", description: "【マイナー】 洞窟体験", duration: 50, entrance_fee: 500, tags: ["洞窟"], tips: ["夏期は18:00最終入場の場合あり。足元に注意。"], startTime: "18:35", endTime: "19:25", order: 16, lat: 35.2906, lng: 139.4780 },
+            { id: "il-chianti", name: "イル・キャンティ", description: "【ピンポイント店】 夕食（イタリアン）", duration: 70, entrance_fee: 0, tags: ["夕食","イタリアン"], tips: ["人気店のため予約推奨。同エリア内で移動効率良。"], startTime: "19:25", endTime: "20:35", order: 17, lat: 35.3001, lng: 139.4793 },
+            { id: "goal-enoshima", name: "江ノ島駅", description: "ゴール", duration: 0, entrance_fee: 0, tags: ["ゴール"], tips: ["帰路へ。お疲れ様でした！"], startTime: "20:35", endTime: "20:35", order: 18, lat: 35.3058, lng: 139.4816 },
         ];
 
         const DEMO_COUPONS = [
@@ -133,7 +167,7 @@
             { title: "観光開始時間を教えてください", key: "startTime", isTimeInput: true },
             { title: "帰路につく時間を教えてください", key: "endTime", isTimeInput: true },
             { title: "やりたいことを自由に教えてください", key: "whatToDo", isCustomInput: true, isOptional: true },
-            { title: "特に行きたい場所があれば教えてください", key: "customSpot", isCustomInput: true, isOptional: true }
+            { title: "特に行きたい場所があれば教えてください", key: "customSpot", isCustomInput: true, isOptional: true },
         ];
 
         let currentStep = 0;
@@ -143,10 +177,9 @@
 
         function startDiagnosis() {
             showScreen('diagnosis');
-            renderQuestion();
-            // 合計ステップ数を動的に反映
             const total = document.getElementById('total-steps');
             if (total) total.textContent = String(STEPS.length);
+            renderQuestion();
         }
 
         function renderQuestion() {
@@ -221,51 +254,22 @@
         function renderCoupons() {
             const container = document.getElementById('coupon-list'); if (!container) return; container.innerHTML = '';
             DEMO_COUPONS.forEach(c=>{
-                const row = document.createElement('button'); row.type = 'button'; row.className = 'w-full text-left p-3 bg-white rounded-xl border hover:bg-gray-50 transition';
+                const row = document.createElement('button'); row.type = 'button'; row.className = 'w-full text-left p-3 bg-white rounded-xl border hover:bg-gray-50 transition'; row.setAttribute('data-id', c.id);
                 row.innerHTML = `<div class=\"flex items-center justify-between\"><div><div class=\"text-sm font-medium text-gray-800\">${c.title}</div><div class=\"text-xs text-gray-500\">${c.spotName}</div></div><div class=\"text-right\"><div class=\"text-sm font-bold ${c.used ? 'text-gray-500' : 'text-green-600'}\">${c.discount}</div><div class=\"text-xs text-gray-400\">〜${c.validUntil}</div></div></div>`;
-                row.addEventListener('click', ()=> openCouponDetail(c.id));
                 container.appendChild(row);
             });
+            container.querySelectorAll('button[data-id]').forEach(btn=>{ btn.addEventListener('click', (e)=>{ const id = e.currentTarget.getAttribute('data-id'); openCouponDetail(id); }); });
         }
 
         function openCouponDetail(id) {
             const c = DEMO_COUPONS.find(x=>x.id===id); if (!c) return;
-            // 画面生成
-            let detail = document.getElementById('coupon-detail-screen');
-            if (!detail) {
-                detail = document.createElement('div');
-                detail.id = 'coupon-detail-screen';
-                detail.className = 'hidden p-4 space-y-4 pt-8';
-                detail.innerHTML = `
-                    <div class=\"flex items-center justify-between\">
-                        <h2 class=\"text-xl font-bold text-gray-800\">クーポン詳細</h2>
-                        <button id=\"coupon-detail-back\" class=\"text-blue-600 underline\">一覧に戻る</button>
-                    </div>
-                    <div class=\"bg-white rounded-2xl border p-5 space-y-3\">
-                        <div class=\"text-lg font-semibold text-gray-800\" id=\"cd-title\"></div>
-                        <div class=\"text-sm text-gray-500\" id=\"cd-spot\"></div>
-                        <div class=\"text-sm text-gray-700\" id=\"cd-desc\"></div>
-                        <div class=\"flex items-center justify-between\">
-                            <div class=\"text-base font-bold text-green-600\" id=\"cd-discount\"></div>
-                            <div class=\"text-xs text-gray-500\" id=\"cd-valid\"></div>
-                        </div>
-                        <div id=\"cd-status\" class=\"text-sm\"></div>
-                        <button id=\"cd-use\" class=\"w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition\">使う</button>
-                    </div>
-                `;
-                document.getElementById('app').appendChild(detail);
-                detail.querySelector('#coupon-detail-back').addEventListener('click', ()=> showScreen('coupons'));
-                detail.querySelector('#cd-use').addEventListener('click', ()=> confirmUseCurrentCoupon());
-            }
-            // 値反映
-            detail.dataset.couponId = c.id;
-            detail.querySelector('#cd-title').textContent = c.title;
-            detail.querySelector('#cd-spot').textContent = `対象: ${c.spotName}`;
-            detail.querySelector('#cd-desc').textContent = c.description;
-            detail.querySelector('#cd-discount').textContent = c.discount;
-            detail.querySelector('#cd-valid').textContent = `有効期限: ${c.validUntil}`;
-            const status = detail.querySelector('#cd-status');
-            const useBtn = detail.querySelector('#cd-use');
+            document.getElementById('cd-title').textContent = c.title;
+            document.getElementById('cd-spot').textContent = `対象: ${c.spotName}`;
+            document.getElementById('cd-desc').textContent = c.description;
+            document.getElementById('cd-discount').textContent = c.discount;
+            document.getElementById('cd-valid').textContent = `有効期限: ${c.validUntil}`;
+            const status = document.getElementById('cd-status'); const useBtn = document.getElementById('cd-use');
+            useBtn.onclick = null;
             if (c.used) {
                 status.textContent = 'このクーポンは使用済みです';
                 status.className = 'text-sm text-gray-500';
@@ -277,59 +281,14 @@
                 useBtn.removeAttribute('disabled');
                 useBtn.className = 'w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition';
                 useBtn.textContent = '使う';
+                useBtn.onclick = () => {
+                    const yes = window.confirm('本当にこのクーポンを使いますか？一度使用済みにすると戻せません。');
+                    if (!yes) return;
+                    c.used = true; // 不可逆
+                    openCouponDetail(id);
+                };
             }
             showOnly('coupon-detail');
-        }
-
-        function confirmUseCurrentCoupon() {
-            const detail = document.getElementById('coupon-detail-screen'); if (!detail) return;
-            const id = detail.dataset.couponId; const c = DEMO_COUPONS.find(x=>x.id===id); if (!c || c.used) return;
-            const yes = window.confirm('本当にこのクーポンを使いますか？一度使用済みにすると戻せません。');
-            if (!yes) return;
-            c.used = true; // 不可逆
-            openCouponDetail(id); // 画面を再描画
-        }
-
-        const TRANSIT_INFO = [
-            {
-                from: '江島神社', to: '江ノ島シーキャンドル',
-                steps: [
-                    { mode: 'walk', text: '徒歩 10分（江島神社 → サムエル・コッキング苑）' }
-                ]
-            },
-            {
-                from: '江ノ島シーキャンドル', to: '新江ノ島水族館',
-                steps: [
-                    { mode: 'walk', text: '徒歩 5分（シーキャンドル → 降り口）' },
-                    { mode: 'bus', text: '江ノ電バス 12:10 発 → 12:18 着（片道IC 210円）' },
-                    { mode: 'walk', text: '徒歩 2分（水族館入口へ）' }
-                ]
-            }
-        ];
-
-        function renderTransitInfo() {
-            const containerId = 'transit-info';
-            let container = document.getElementById(containerId);
-            if (!container) {
-                container = document.createElement('div');
-                container.id = containerId;
-                container.className = 'space-y-3';
-                document.getElementById('map-screen').appendChild(container);
-            }
-            container.innerHTML = '';
-            TRANSIT_INFO.forEach(seg => {
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl border p-4';
-                card.innerHTML = `<div class=\"text-sm font-medium text-gray-800 mb-2\">${seg.from} → ${seg.to}</div>`;
-                seg.steps.forEach(s => {
-                    const row = document.createElement('div');
-                    row.className = 'text-xs text-gray-600 flex items-center gap-2';
-                    const icon = s.mode === 'walk' ? '🚶' : s.mode === 'bus' ? '🚌' : 'ℹ️';
-                    row.innerHTML = `<span>${icon}</span><span>${s.text}</span>`;
-                    card.appendChild(row);
-                });
-                container.appendChild(card);
-            });
         }
 
         function initMapOnce() {
@@ -344,6 +303,23 @@
             renderTransitInfo();
         }
 
+        const TRANSIT_INFO = [
+            { time: '11:40-11:50', from: '鎌倉駅', to: '和田塚駅', mode: '江ノ電', detail: '江ノ電で移動（約10分）' },
+            { time: '13:10-13:20', from: '和田塚駅', to: '長谷駅', mode: '江ノ電', detail: '江ノ電で移動（約10分）' },
+            { time: '16:00-16:10', from: '長谷駅', to: '稲村ヶ崎駅', mode: '江ノ電', detail: '江ノ電で移動（約10分）' },
+            { time: '16:50-17:05', from: '稲村ヶ崎駅', to: '江ノ島駅', mode: '江ノ電', detail: '江ノ電で移動（約15分）' },
+            { time: '17:05-17:35', from: '江ノ島駅', to: '江ノ島', mode: '徒歩', detail: '徒歩で移動（約30分）' },
+        ];
+
+        function renderTransitInfo() {
+            const container = document.getElementById('transit-info'); if (!container) return; container.innerHTML = '';
+            TRANSIT_INFO.forEach(seg => {
+                const card = document.createElement('div'); card.className = 'bg-white rounded-xl border p-4';
+                card.innerHTML = `<div class=\"text-sm font-medium text-gray-800\">${seg.time} ${seg.from} → ${seg.to}</div><div class=\"text-xs text-gray-600 mt-1\">${seg.mode} | ${seg.detail}</div>`;
+                container.appendChild(card);
+            });
+        }
+
         function showOnly(key) {
             document.getElementById('intro-screen').classList.add('hidden');
             document.getElementById('diagnosis-screen').classList.add('hidden');
@@ -351,7 +327,7 @@
             document.getElementById('results-screen').classList.add('hidden');
             document.getElementById('map-screen').classList.add('hidden');
             document.getElementById('coupons-screen').classList.add('hidden');
-            const map = { intro:'intro-screen', diagnosis:'diagnosis-screen', loading:'loading-screen', results:'results-screen', map:'map-screen', coupons:'coupons-screen', 'coupon-detail':'coupon-detail-screen' };
+            const map = { intro:'intro-screen', diagnosis:'diagnosis-screen', loading:'loading-screen', results:'results-screen', map:'map-screen', coupons:'coupons-screen' };
             const id = map[key]; if (id) document.getElementById(id).classList.remove('hidden');
         }
 
