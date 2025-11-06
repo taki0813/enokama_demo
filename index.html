@@ -1,639 +1,1027 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>江ノ島・鎌倉 AI観光ルート生成 - デモ</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        #map { height: 420px; border-radius: 1rem; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>江ノ島・鎌倉 AI観光ルート生成 - デモ</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- GSAP (optional for subtle motion) -->
+  <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      /* deeper Shonan palette */
+      --sea-top: #aef4ff;       /* sky-ish */
+      --sea-mid: #00bcd4;       /* vivid aqua */
+      --sea-deep: #007c91;      /* deeper ocean */
+      --sand: #fff6ec;
+      --glass-border: rgba(255,255,255,0.46);
+      --text-deep: #023643;     /* dark navy for contrast */
+    }
+    html,body{height:100%;margin:0;font-family:"Poppins","Noto Sans JP","Noto Sans KR",system-ui,-apple-system,"Segoe UI",Roboto,Arial;background: linear-gradient(180deg,var(--sea-top) 0%, #e6fbff 20%, #fffaf0 100%);color:var(--text-deep);}
+    /* Ocean waves - stronger colors */
+    .ocean-wrap{position:fixed;left:0;right:0;bottom:0;height:34vh;pointer-events:none;z-index:0;overflow:hidden;}
+    .ocean-svg{position:absolute;left:-12%;width:124%;bottom:-8vh;opacity:0.9;filter: blur(6px) saturate(1.05);transform-origin:center;animation: drift 24s linear infinite;}
+    .ocean-svg.layer2{bottom:-10vh;opacity:0.75;animation-duration:34s;filter: blur(8px);}
+    .ocean-svg.layer3{bottom:-14vh;opacity:0.42;animation-duration:46s;filter: blur(12px);}
+    @keyframes drift{0%{transform:translateX(0) translateY(0);}50%{transform:translateX(-6%) translateY(3%);}100%{transform:translateX(0) translateY(0);}}
+
+    /* glass surfaces */
+    .glass{ background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.46)); border:1px solid var(--glass-border); backdrop-filter: blur(10px) saturate(110%); box-shadow: 0 10px 40px rgba(2,6,23,0.06); border-radius:16px;}
+    .glass-strong{ background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6)); border:1px solid rgba(255,255,255,0.7); backdrop-filter: blur(16px) saturate(120%); box-shadow:0 12px 44px rgba(2,6,23,0.06); border-radius:18px;}
+
+    /* buttons - improved contrast (no white-on-white) */
+    .glass-btn {
+      background: linear-gradient(90deg, rgba(0,188,212,0.12), rgba(255,255,255,0.9));
+      color: var(--text-deep);
+      border: 1px solid rgba(0,124,145,0.16);
+      padding: 0.9rem 1.2rem;
+      border-radius: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0,124,145,0.06);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .glass-btn:disabled { opacity: 0.45; transform:none; pointer-events:none; }
+    .glass-btn:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,124,145,0.12); }
+
+    /* language select */
+    .lang-select { appearance:none; -webkit-appearance:none; background: linear-gradient(90deg, rgba(0,188,212,0.12), rgba(61,215,240,0.06)); border:1px solid rgba(0,124,145,0.28); color:var(--text-deep); padding:8px 10px; border-radius:12px; font-weight:700; font-size:0.95rem; backdrop-filter: blur(8px);}
+    .lang-wrap{ position:relative; display:inline-block; }
+    .lang-wrap::after{ content:"▾"; position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; color: rgba(4,53,69,0.6); font-size:0.75rem; }
+
+    /* progress bar */
+    #progress-bar { height:0.6rem; border-radius:999px; background: linear-gradient(90deg, var(--sea-mid), var(--sea-deep)); width:0%; transition: width .28s ease; }
+
+    /* options */
+    .option-label { transition: all .16s ease; border-radius:12px; border:1px solid rgba(4,37,52,0.06); }
+    .option-label:hover{ transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,124,145,0.06); }
+    .option-label.active { border-color: rgba(0,124,145,0.48); background: linear-gradient(90deg, rgba(0,188,212,0.04), rgba(61,215,240,0.02)); box-shadow: 0 12px 28px rgba(0,124,145,0.06); }
+
+    /* timeline / plan */
+    .timeline { position:relative; padding-left:2.25rem; }
+    .timeline::before { content:""; position:absolute; left:0.95rem; top:0.5rem; bottom:0; width:4px; background: linear-gradient(180deg, rgba(0,188,212,0.18), rgba(0,124,145,0.06)); border-radius:3px; }
+    .timeline-item { position:relative; margin-bottom:1rem; }
+    .timeline-dot { position:absolute; left:-0.38rem; top:0.6rem; width:14px; height:14px; border-radius:999px; background: linear-gradient(180deg, var(--sea-mid), var(--sea-deep)); box-shadow:0 6px 16px rgba(0,124,145,0.14); border:3px solid white; }
+
+    .spot-card { background: rgba(255,255,255,0.86); border-radius:14px; padding:1rem; box-shadow:0 12px 28px rgba(2,6,23,0.06); }
+    .spot-title { font-weight:800; color:var(--text-deep); }
+    .spot-desc { color:#475569; font-size:0.95rem; margin-top:0.25rem; }
+    .spot-tips { margin-top:0.6rem; font-size:0.85rem; color:#334155; background: linear-gradient(90deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6)); padding:0.6rem; border-radius:10px; border:1px solid rgba(14,165,191,0.06); }
+
+    .move-card { background: linear-gradient(90deg, rgba(0,188,212,0.10), rgba(0,188,212,0.04)); border-radius:12px; padding:0.8rem; display:flex; gap:0.75rem; align-items:center; border-left:4px solid rgba(0,124,145,0.36); color:var(--text-deep); }
+    .move-icon { width:44px; height:44px; min-width:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; background: linear-gradient(180deg, var(--sea-mid), var(--sea-deep)); color:white; box-shadow:0 8px 20px rgba(0,124,145,0.12); }
+
+    .time-badge { font-size:0.85rem; color:#07505b; font-weight:700; }
+
+    .checkin-btn { margin-top:0.6rem; padding:8px 12px; border-radius:10px; background: linear-gradient(90deg, rgba(255,255,255,0.96), rgba(0,188,212,0.06)); color:var(--text-deep); border:1px solid rgba(0,124,145,0.12); font-weight:700; }
+    .checked-badge { display:inline-block; margin-left:8px; padding:4px 8px; background:linear-gradient(90deg,var(--sea-deep),var(--sea-mid)); color:white; border-radius:999px; font-size:0.78rem; font-weight:700; }
+
+    .fade-in { animation: fadeInUp .52s ease both; }
+    @keyframes fadeInUp { from{ opacity:0; transform: translateY(8px);} to{opacity:1; transform:none;} }
+
+    #map{ height:420px; border-radius:14px; box-shadow: 0 10px 28px rgba(2,6,23,0.06); }
+    #nav-bar{ background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.72)); backdrop-filter: blur(8px); border-top:1px solid rgba(255,255,255,0.6); }
+    .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 1rem); }
+    @media (max-width:420px){ #map{ height:300px; } }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-white to-blue-50 min-h-screen">
-    <div id="app" class="max-w-md mx-auto pb-20">
-        <div class="fixed top-3 right-3 z-50">
-            <select id="lang-select" class="bg-white/90 border rounded-xl px-3 py-2 text-sm shadow">
-                <option value="ja">日本語</option>
-                <option value="en">English</option>
-                <option value="zh">中文</option>
-                <option value="ko">한국어</option>
-            </select>
-        </div>
-        <div id="intro-screen" class="p-4 space-y-8 pt-12">
-            <div class="text-center space-y-6">
-                <div class="relative inline-block">
-                    <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg">
-                        <svg class="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                    </div>
-                    <div class="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <h1 data-i18n="app.title" class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">江ノ島・鎌倉</h1>
-                    <h2 data-i18n="app.subtitle" class="text-xl font-semibold text-gray-700">AI観光ルート生成</h2>
-                    <p data-i18n="app.partners" class="text-sm text-gray-500 bg-white/60 backdrop-blur-sm rounded-full px-4 py-2 inline-block">中央大学岡嶋ゼミ × 神奈川県観光協会</p>
-                </div>
-            </div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
-                <div class="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6">
-                    <h3 class="flex items-center gap-3 text-xl font-bold">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                        <span data-i18n="intro.about">プロジェクトについて</span>
-                    </h3>
-                </div>
-                <div class="p-6 space-y-6">
-                    <p data-i18n="intro.lead" class="text-gray-600 text-center">あなたの好みに合わせて最適な観光ルートを自動生成します。</p>
-                    <div class="grid gap-4">
-                        <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl"><div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center"><svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div><div><h4 data-i18n="intro.feature1.title" class="font-semibold text-gray-800 text-base">AIパーソナライズ</h4><p data-i18n="intro.feature1.desc" class="text-sm text-gray-600 mt-1">診断結果に基づいて、あなただけの観光プランを生成</p></div></div>
-                        <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl"><div class="w-12 h-12 bg-green-500 rounded-2xl flex items-center justify-center"><svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div><h4 data-i18n="intro.feature2.title" class="font-semibold text-gray-800 text-base">リアルタイムチェックイン</h4><p data-i18n="intro.feature2.desc" class="text-sm text-gray-600 mt-1">GPS連動で観光地を訪問してポイントを獲得</p></div></div>
-                        <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-2xl"><div class="w-12 h-12 bg-yellow-500 rounded-2xl flex items-center justify-center"><svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg></div><div><h4 data-i18n="intro.feature3.title" class="font-semibold text-gray-800 text-base">特典クーポン</h4><p data-i18n="intro.feature3.desc" class="text-sm text-gray-600 mt-1">観光地での割引や特典を即座に獲得</p></div></div>
-                    </div>
-                </div>
-            </div>
-            <button id="start-btn" data-i18n="intro.start" onclick="startDiagnosis()" class="w-full bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white py-6 text-lg font-semibold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105">AI観光ルート生成を開始</button>
-        </div>
+<body class="min-h-screen">
 
-        <div id="diagnosis-screen" class="hidden p-4 space-y-6 pt-8">
-            <div class="text-center space-y-4">
-                <div class="relative inline-block"><div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg"><svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center"><span id="step-number" class="text-xs font-bold text-white">1</span></div></div>
-                <div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">江ノ島・鎌倉観光ガイド</h1><p class="text-gray-600 mt-2">あなたにぴったりの観光プランを診断します</p></div>
-            </div>
-            <div class="space-y-3"><div class="flex justify-between text-sm text-gray-600"><span class="font-medium" data-i18n="diagnosis.progress">診断進行状況</span><span class="bg-white/60 backdrop-blur-sm px-3 py-1 rounded-full"><span id="step-progress">1</span> / <span id="total-steps">10</span></span></div><div class="bg-white/60 backdrop-blur-sm rounded-full p-1"><div id="progress-bar" class="h-3 bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-300" style="width: 9%"></div></div></div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden"><div class="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6"><h2 id="question-title" class="text-xl font-bold">性別を教えてください</h2></div><div id="question-content" class="p-6"></div></div>
-            <div class="flex gap-4">
-                <button id="back-btn" data-i18n="common.back" onclick="previousStep()" class="hidden flex-1 h-12 rounded-2xl border-2 border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">戻る</button>
-                <button id="next-btn" onclick="nextStep()" class="flex-1 h-12 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:transform-none">次へ</button>
-            </div>
-        </div>
+  <!-- Ocean wave layers (deeper tones) -->
+  <div class="ocean-wrap" aria-hidden="true">
+    <svg class="ocean-svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="#00bcd4" d="M0,224L48,202.7C96,181,192,139,288,117.3C384,96,480,96,576,122.7C672,149,768,203,864,218.7C960,235,1056,213,1152,213.3C1248,213,1344,235,1392,245.3L1440,256L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+    </svg>
+    <svg class="ocean-svg layer2" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="#007c91" d="M0,160L40,165.3C80,171,160,181,240,181.3C320,181,400,171,480,154.7C560,139,640,117,720,122.7C800,128,880,160,960,176C1040,192,1120,192,1200,208C1280,224,1360,256,1400,272L1440,288L1440,320L1400,320C1360,320,1280,320,1200,320C1120,320,1040,320,960,320C880,320,800,320,720,320C640,320,560,320,480,320C400,320,320,320,240,320C160,320,80,320,40,320L0,320Z"></path>
+    </svg>
+    <svg class="ocean-svg layer3" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="#e8fbff" d="M0,96L60,101.3C120,107,240,117,360,144C480,171,600,213,720,213.3C840,213,960,171,1080,149.3C1200,128,1320,128,1380,128L1440,128L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"></path>
+    </svg>
+  </div>
 
-        <div id="loading-screen" class="hidden p-4 pt-20"><div class="text-center space-y-8"><div class="relative inline-block"><div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg"><div class="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div></div></div><div class="space-y-3"><h2 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">AIが観光プランを生成中...</h2><p class="text-gray-600">あなたの好みを分析して最適なルートを提案しています</p></div></div></div>
+  <div id="app" class="max-w-md mx-auto relative z-10 pb-safe">
 
-        <div id="results-screen" class="hidden p-4 space-y-6 pt-8">
-            <div class="text-center space-y-4"><div class="relative inline-block"><div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg"><svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg></div></div><div><h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">あなたにおすすめの観光プラン</h1><p class="text-gray-600 mt-2">診断結果に基づいて最適なルートをご提案します</p></div></div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
-                <div class="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6"><h2 class="flex items-center gap-3 text-xl font-bold"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span id="area-title">江ノ島・鎌倉</span> 観光コース</h2><div class="text-blue-100 mt-2" id="travel-style-text">ゆったりと楽しむコース</div></div>
-                <div class="p-6 space-y-6">
-                    <div class="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-2xl"><svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="font-semibold">所要時間: 約3時間45分</span></div>
-                    <div id="spots-list" class="space-y-4"></div>
-                </div>
-            </div>
-            <div class="space-y-4"><button data-i18n="results.view_map" onclick="showScreen('map')" class="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105">地図で詳細ルートを見る</button><button data-i18n="results.view_coupons" onclick="showScreen('coupons')" class="w-full h-14 border-2 border-green-500 text-green-600 hover:bg-green-50 hover:border-green-600 rounded-2xl transition-all duration-200">クーポンを見る</button></div>
-        </div>
-
-        <div id="map-screen" class="hidden p-4 space-y-4 pt-8">
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-bold text-gray-800" data-i18n="map.title">地図でルートを確認</h2>
-                <button onclick="showScreen('results')" class="text-blue-600 underline">プランに戻る</button>
-            </div>
-            <div id="map" class="bg-gray-200"></div>
-            <div class="text-xs text-gray-500">地図: © OpenStreetMap contributors</div>
-            <div id="transit-info" class="space-y-3"></div>
-        </div>
-
-        <div id="coupons-screen" class="hidden p-4 space-y-4 pt-8">
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-bold text-gray-800" data-i18n="coupon.title">獲得クーポン</h2>
-                <button onclick="showScreen('results')" class="text-blue-600 underline">プランに戻る</button>
-            </div>
-            <div id="coupon-list" class="space-y-3"></div>
-        </div>
-
-        <div id="coupon-detail-screen" class="hidden p-4 space-y-4 pt-8">
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-bold text-gray-800">クーポン詳細</h2>
-                <button onclick="showScreen('coupons')" class="text-blue-600 underline">一覧に戻る</button>
-            </div>
-            <div class="bg-white rounded-2xl border p-5 space-y-3">
-                <div class="text-lg font-semibold text-gray-800" id="cd-title"></div>
-                <div class="text-sm text-gray-500" id="cd-spot"></div>
-                <div class="text-sm text-gray-700" id="cd-desc"></div>
-                <div class="flex items-center justify-between">
-                    <div class="text-base font-bold text-green-600" id="cd-discount"></div>
-                    <div class="text-xs text-gray-500" id="cd-valid"></div>
-                </div>
-                <div id="cd-status" class="text-sm"></div>
-                <button id="cd-use" class="w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition">使う</button>
-            </div>
-        </div>
+    <!-- Language control (right-top) -->
+    <div class="fixed top-3 right-3 z-50">
+      <div class="lang-wrap">
+        <select id="lang-select" class="lang-select" aria-label="言語選択">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="ko">한국어</option>
+        </select>
+      </div>
     </div>
 
-    <div id="nav-bar" class="hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 z-50">
-        <div class="max-w-md mx-auto flex justify-around">
-            <button onclick="showScreen('intro')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="text-xs font-medium" data-i18n="nav.home">ホーム</span></button>
-            <button onclick="showScreen('diagnosis')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs font-medium" data-i18n="nav.diagnosis">診断</span></button>
-            <button onclick="showScreen('results')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg><span class="text-xs font-medium" data-i18n="nav.plan">プラン</span></button>
-            <button onclick="showScreen('map')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="text-xs font-medium" data-i18n="nav.map">地図</span></button>
-            <button onclick="showScreen('coupons')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg><span class="text-xs font-medium" data-i18n="nav.coupons">クーポン</span></button>
+    <!-- Intro screen -->
+    <div id="intro-screen" class="p-4 space-y-8 pt-12 fade-in">
+      <div class="text-center space-y-6">
+        <div class="relative inline-block">
+          <div class="w-24 h-24 bg-gradient-to-br from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] rounded-3xl flex items-center justify-center mx-auto shadow-lg glass-strong">
+            <svg class="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div class="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center shadow">
+            <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
         </div>
+
+        <div class="space-y-3">
+          <h1 data-i18n="app.title" class="text-4xl font-bold bg-clip-text text-transparent" style="background-image: linear-gradient(90deg, var(--sea-mid), var(--sea-deep));">江ノ島・鎌倉</h1>
+          <h2 data-i18n="app.subtitle" class="text-xl font-semibold text-gray-700">AI観光ルート生成</h2>
+          <p data-i18n="app.partners" class="text-sm text-gray-500 glass inline-block px-4 py-2 rounded-full">中央大学岡嶋ゼミ × 神奈川県観光協会</p>
+        </div>
+      </div>
+
+      <div class="glass-strong overflow-hidden">
+        <div class="bg-gradient-to-r from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] text-white p-6">
+          <h3 class="flex items-center gap-3 text-xl font-bold">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            <span data-i18n="intro.about">プロジェクトについて</span>
+          </h3>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <p data-i18n="intro.lead" class="text-gray-600 text-center">あなたの好みに合わせて最適な観光ルートを自動生成します。</p>
+          <div class="grid gap-4">
+            <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl">
+              <div class="w-12 h-12 bg-[color:var(--sea-mid)] rounded-2xl flex items-center justify-center glass">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+              </div>
+              <div>
+                <h4 data-i18n="intro.feature1.title" class="font-semibold text-gray-800 text-base">AIパーソナライズ</h4>
+                <p data-i18n="intro.feature1.desc" class="text-sm text-gray-600 mt-1">診断結果に基づいて、あなただけの観光プランを生成</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl">
+              <div class="w-12 h-12 bg-[color:var(--sea-deep)] rounded-2xl flex items-center justify-center glass">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <div>
+                <h4 data-i18n="intro.feature2.title" class="font-semibold text-gray-800 text-base">リアルタイムチェックイン</h4>
+                <p data-i18n="intro.feature2.desc" class="text-sm text-gray-600 mt-1">GPS連動で観光地を訪問してポイントを獲得</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4 p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-2xl">
+              <div class="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center glass">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>
+              </div>
+              <div>
+                <h4 data-i18n="intro.feature3.title" class="font-semibold text-gray-800 text-base">特典クーポン</h4>
+                <p data-i18n="intro.feature3.desc" class="text-sm text-gray-600 mt-1">観光地での割引や特典を即座に獲得</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="start-btn" data-i18n="intro.start" onclick="startDiagnosis()" class="w-full glass-btn text-[color:var(--text-deep)] font-semibold text-lg rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105">
+        AI観光ルート生成を開始
+      </button>
     </div>
 
-    <script>
-        // i18n
-        let currentLang = 'ja';
-        const i18n = {
-            ja: {
-                'app.title': '江ノ島・鎌倉',
-                'app.subtitle': 'AI観光ルート生成',
-                'app.partners': '中央大学岡嶋ゼミ × 神奈川県観光協会',
-                'intro.about': 'プロジェクトについて',
-                'intro.lead': 'あなたの好みに合わせて最適な観光ルートを自動生成します。',
-                'intro.feature1.title': 'AIパーソナライズ', 'intro.feature1.desc': '診断結果に基づいて、あなただけの観光プランを生成',
-                'intro.feature2.title': 'リアルタイムチェックイン', 'intro.feature2.desc': 'GPS連動で観光地を訪問してポイントを獲得',
-                'intro.feature3.title': '特典クーポン', 'intro.feature3.desc': '観光地での割引や特典を即座に獲得',
-                'intro.start': 'AI観光ルート生成を開始',
-                'diagnosis.progress': '診断進行状況', 'common.back': '戻る', 'common.next': '次へ', 'diagnosis.view_result': '診断結果を見る',
-                'results.view_map': '地図で詳細ルートを見る', 'results.view_coupons': 'クーポンを見る',
-                'map.title': '地図でルートを確認',
-                'coupon.title': '獲得クーポン', 'coupon.detail': 'クーポン詳細', 'coupon.back_list': '一覧に戻る', 'coupon.use': '使う', 'coupon.used': '使用済み', 'coupon.confirm': '本当にこのクーポンを使いますか？一度使用済みにすると戻せません。',
-                'nav.home': 'ホーム', 'nav.diagnosis': '診断', 'nav.plan': 'プラン', 'nav.map': '地図', 'nav.coupons': 'クーポン',
-                // Steps
-                'steps.gender.title': '性別を教えてください',
-                'options.gender.male': '男性', 'options.gender.female': '女性', 'options.gender.other': 'その他',
-                'steps.age.title': '年齢層を教えてください',
-                'options.age.10s': '10代','options.age.20s': '20代','options.age.30s': '30代','options.age.40s': '40代','options.age.50s': '50代以上',
-                'steps.mustVisit.title': '絶対に行きたい場所はありますか？',
-                'options.mustVisit.enoshima': '江ノ島','options.mustVisit.kamakura': '鎌倉','options.mustVisit.both': '両方','options.mustVisit.undecided': 'まだ決めていない',
-                'steps.travelStyle.title': '旅行スタイルを教えてください',
-                'options.travelStyle.relaxed': 'ゆっくり観光','options.travelStyle.active': 'アクティブに回る','options.travelStyle.cultural': '文化・歴史重視','options.travelStyle.gourmet': 'グルメ重視',
-                'steps.startLocation.title': '観光開始場所を教えてください',
-                'options.startLocation.enoshima_station': '江ノ島駅','options.startLocation.kamakura_station': '鎌倉駅','options.startLocation.fujisawa_station': '藤沢駅','options.startLocation.other': 'その他（自由記述）',
-                'steps.customStartLocation.title': 'その他の場合は開始場所を教えてください',
-                'steps.startTime.title': '観光開始時間を教えてください',
-                'steps.endTime.title': '帰路につく時間を教えてください',
-                'steps.whatToDo.title': 'やりたいことを自由に教えてください',
-                'steps.customSpot.title': '特に行きたい場所があれば教えてください',
-                'placeholder.customStartLocation': '例: 新宿駅、横浜駅、自宅住所など',
-                'placeholder.whatToDo': '例: 写真を撮りたい、美味しいものを食べたい など',
-                'placeholder.customSpot': '例: 鎌倉文学館 など',
-                // Results labels
-                'results.stay': '滞在時間', 'results.fee': '入場料',
-            },
-            en: {
-                'app.title': 'Enoshima & Kamakura',
-                'app.subtitle': 'AI Tour Route Generator',
-                'app.partners': 'Chuo Univ. Okajima Seminar × Kanagawa Tourism',
-                'intro.about': 'About the Project',
-                'intro.lead': 'We generate the best tour route tailored to your preferences.',
-                'intro.feature1.title': 'AI Personalization', 'intro.feature1.desc': 'Generate a tour plan just for you',
-                'intro.feature2.title': 'Real-time Check-in', 'intro.feature2.desc': 'Earn points by visiting spots via GPS',
-                'intro.feature3.title': 'Special Coupons', 'intro.feature3.desc': 'Get discounts and perks instantly',
-                'intro.start': 'Start AI Route Generation',
-                'diagnosis.progress': 'Progress', 'common.back': 'Back', 'common.next': 'Next', 'diagnosis.view_result': 'View Results',
-                'results.view_map': 'View detailed route on Map', 'results.view_coupons': 'View Coupons',
-                'map.title': 'Check Route on Map',
-                'coupon.title': 'Coupons', 'coupon.detail': 'Coupon Details', 'coupon.back_list': 'Back to List', 'coupon.use': 'Use', 'coupon.used': 'Used', 'coupon.confirm': 'Use this coupon? This cannot be undone.',
-                'nav.home': 'Home', 'nav.diagnosis': 'Diagnosis', 'nav.plan': 'Plan', 'nav.map': 'Map', 'nav.coupons': 'Coupons',
-                // Steps
-                'steps.gender.title': 'Please tell us your gender',
-                'options.gender.male': 'Male', 'options.gender.female': 'Female', 'options.gender.other': 'Other',
-                'steps.age.title': 'Please select your age group',
-                'options.age.10s': 'Teens','options.age.20s': '20s','options.age.30s': '30s','options.age.40s': '40s','options.age.50s': '50+',
-                'steps.mustVisit.title': 'Any must-visit area?',
-                'options.mustVisit.enoshima': 'Enoshima','options.mustVisit.kamakura': 'Kamakura','options.mustVisit.both': 'Both','options.mustVisit.undecided': 'Undecided',
-                'steps.travelStyle.title': 'Your travel style',
-                'options.travelStyle.relaxed': 'Relaxed','options.travelStyle.active': 'Active','options.travelStyle.cultural': 'Culture/History','options.travelStyle.gourmet': 'Gourmet',
-                'steps.startLocation.title': 'Where do you start?',
-                'options.startLocation.enoshima_station': 'Enoshima Station','options.startLocation.kamakura_station': 'Kamakura Station','options.startLocation.fujisawa_station': 'Fujisawa Station','options.startLocation.other': 'Other (free text)',
-                'steps.customStartLocation.title': 'If other, please specify your start location',
-                'steps.startTime.title': 'Select your start time',
-                'steps.endTime.title': 'Select your return time',
-                'steps.whatToDo.title': 'Tell us what you want to do (optional)',
-                'steps.customSpot.title': 'Any specific spot you want to visit? (optional)',
-                'placeholder.customStartLocation': 'e.g., Shinjuku Station, Yokohama, home address',
-                'placeholder.whatToDo': 'e.g., Take many photos, eat tasty food, learn history',
-                'placeholder.customSpot': 'e.g., Kamakura Museum of Literature',
-                // Results labels
-                'results.stay': 'Stay', 'results.fee': 'Entrance fee',
-            },
-            zh: {
-                'app.title': '江之岛・镰仓',
-                'app.subtitle': 'AI 观光路线生成',
-                'app.partners': '中央大学冈嶋研究室 × 神奈川县观光协会',
-                'intro.about': '项目简介',
-                'intro.lead': '根据您的喜好自动生成最佳观光路线。',
-                'intro.feature1.title': 'AI 个性化', 'intro.feature1.desc': '基于问答为您生成专属行程',
-                'intro.feature2.title': '实时打卡', 'intro.feature2.desc': '通过 GPS 到访景点获得积分',
-                'intro.feature3.title': '优惠券', 'intro.feature3.desc': '即时获取折扣与特典',
-                'intro.start': '开始生成 AI 路线',
-                'diagnosis.progress': '进度', 'common.back': '返回', 'common.next': '下一步', 'diagnosis.view_result': '查看结果',
-                'results.view_map': '在地图上查看详细路线', 'results.view_coupons': '查看优惠券',
-                'map.title': '在地图上确认路线',
-                'coupon.title': '优惠券', 'coupon.detail': '优惠券详情', 'coupon.back_list': '返回列表', 'coupon.use': '使用', 'coupon.used': '已使用', 'coupon.confirm': '确定使用该优惠券？此操作无法撤销。',
-                'nav.home': '首页', 'nav.diagnosis': '诊断', 'nav.plan': '方案', 'nav.map': '地图', 'nav.coupons': '优惠券',
-                // Steps
-                'steps.gender.title': '请选择您的性别',
-                'options.gender.male': '男', 'options.gender.female': '女', 'options.gender.other': '其他',
-                'steps.age.title': '请选择您的年龄段',
-                'options.age.10s': '10多岁','options.age.20s': '20多岁','options.age.30s': '30多岁','options.age.40s': '40多岁','options.age.50s': '50岁以上',
-                'steps.mustVisit.title': '有必须去的区域吗？',
-                'options.mustVisit.enoshima': '江之岛','options.mustVisit.kamakura': '镰仓','options.mustVisit.both': '两者','options.mustVisit.undecided': '未决定',
-                'steps.travelStyle.title': '旅行风格',
-                'options.travelStyle.relaxed': '轻松观光','options.travelStyle.active': '活力游玩','options.travelStyle.cultural': '文化/历史','options.travelStyle.gourmet': '美食优先',
-                'steps.startLocation.title': '起点',
-                'options.startLocation.enoshima_station': '江之岛站','options.startLocation.kamakura_station': '镰仓站','options.startLocation.fujisawa_station': '藤泽站','options.startLocation.other': '其他（自由输入）',
-                'steps.customStartLocation.title': '若为其他，请输入起点',
-                'steps.startTime.title': '请选择开始时间',
-                'steps.endTime.title': '请选择返回时间',
-                'steps.whatToDo.title': '想做什么（可选）',
-                'steps.customSpot.title': '有想去的具体地点吗（可选）',
-                'placeholder.customStartLocation': '例如：新宿站、横滨、家庭住址',
-                'placeholder.whatToDo': '例如：拍照、美食、学习历史',
-                'placeholder.customSpot': '例如：镰仓文学馆',
-                // Results labels
-                'results.stay': '停留时间', 'results.fee': '门票',
-            },
-            ko: {
-                'app.title': '에노시마・가마쿠라',
-                'app.subtitle': 'AI 관광 루트 생성',
-                'app.partners': '주오대 오카지마 세미나 × 가나가와 관광협회',
-                'intro.about': '프로젝트 소개',
-                'intro.lead': '취향에 맞춘 최적의 관광 루트를 자동 생성합니다.',
-                'intro.feature1.title': 'AI 개인화', 'intro.feature1.desc': '진단 결과를 바탕으로 나만의 플랜 생성',
-                'intro.feature2.title': '실시간 체크인', 'intro.feature2.desc': 'GPS 연동으로 방문 포인트 획득',
-                'intro.feature3.title': '특전 쿠폰', 'intro.feature3.desc': '즉시 할인과 특전을 획득',
-                'intro.start': 'AI 루트 생성 시작',
-                'diagnosis.progress': '진행 상황', 'common.back': '뒤로', 'common.next': '다음', 'diagnosis.view_result': '결과 보기',
-                'results.view_map': '지도로 상세 루트 보기', 'results.view_coupons': '쿠폰 보기',
-                'map.title': '지도로 루트 확인',
-                'coupon.title': '쿠폰', 'coupon.detail': '쿠폰 상세', 'coupon.back_list': '목록으로', 'coupon.use': '사용', 'coupon.used': '사용됨', 'coupon.confirm': '이 쿠폰을 사용하시겠습니까? 되돌릴 수 없습니다.',
-                'nav.home': '홈', 'nav.diagnosis': '진단', 'nav.plan': '플랜', 'nav.map': '지도', 'nav.coupons': '쿠폰',
-                // Steps
-                'steps.gender.title': '성별을 알려주세요',
-                'options.gender.male': '남성', 'options.gender.female': '여성', 'options.gender.other': '기타',
-                'steps.age.title': '연령대를 선택하세요',
-                'options.age.10s': '10대','options.age.20s': '20대','options.age.30s': '30대','options.age.40s': '40대','options.age.50s': '50+',
-                'steps.mustVisit.title': '꼭 가고 싶은 지역이 있나요?',
-                'options.mustVisit.enoshima': '에노시마','options.mustVisit.kamakura': '가마쿠라','options.mustVisit.both': '둘 다','options.mustVisit.undecided': '미정',
-                'steps.travelStyle.title': '여행 스타일',
-                'options.travelStyle.relaxed': '여유롭게','options.travelStyle.active': '활동적으로','options.travelStyle.cultural': '문화/역사','options.travelStyle.gourmet': '미식',
-                'steps.startLocation.title': '출발 지점',
-                'options.startLocation.enoshima_station': '에노시마역','options.startLocation.kamakura_station': '가마쿠라역','options.startLocation.fujisawa_station': '후지사와역','options.startLocation.other': '기타(직접입력)',
-                'steps.customStartLocation.title': '기타인 경우 출발 지점을 입력하세요',
-                'steps.startTime.title': '시작 시간을 선택하세요',
-                'steps.endTime.title': '귀로에 오를 시간을 선택하세요',
-                'steps.whatToDo.title': '하고 싶은 것을 알려주세요(선택)',
-                'steps.customSpot.title': '특별히 가고 싶은 곳이 있나요?(선택)',
-                'placeholder.customStartLocation': '예: 신주쿠역, 요코하마, 집 주소',
-                'placeholder.whatToDo': '예: 사진 촬영, 맛집 탐방, 역사 배우기',
-                'placeholder.customSpot': '예: 가마쿠라 문학관',
-                // Results labels
-                'results.stay': '체류 시간', 'results.fee': '입장료',
-            },
-        };
+    <!-- Diagnosis screen -->
+    <div id="diagnosis-screen" class="hidden p-4 space-y-6 pt-8 fade-in">
+      <div class="text-center space-y-4">
+        <div class="relative inline-block">
+          <div class="w-16 h-16 bg-gradient-to-br from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] rounded-2xl flex items-center justify-center mx-auto shadow-lg glass">
+            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow">
+            <span id="step-number" class="text-xs font-bold text-white">1</span>
+          </div>
+        </div>
 
-        function t(key){ return (i18n[currentLang] && i18n[currentLang][key]) || (i18n['ja'][key] || ''); }
-        function applyI18n(){
-            document.querySelectorAll('[data-i18n]').forEach(el=>{
-                const key = el.getAttribute('data-i18n'); const txt = t(key); if (txt) el.textContent = txt;
-            });
-            // Buttons that change text dynamically
-            const nextBtn = document.getElementById('next-btn'); if (nextBtn) nextBtn.textContent = currentStep === STEPS.length - 1 ? t('diagnosis.view_result') : t('common.next');
+        <div>
+          <h1 class="text-2xl font-bold bg-clip-text text-transparent" style="background-image: linear-gradient(90deg, var(--sea-mid), var(--sea-deep));">江ノ島・鎌倉観光ガイド</h1>
+          <p class="text-gray-600 mt-2">あなたにぴったりの観光プランを診断します</p>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex justify-between text-sm text-gray-600">
+          <span class="font-medium" data-i18n="diagnosis.progress">診断進行状況</span>
+          <span class="bg-white/60 glass px-3 py-1 rounded-full"><span id="step-progress">1</span> / <span id="total-steps">10</span></span>
+        </div>
+        <div class="bg-white/60 backdrop-blur-sm rounded-full p-1">
+          <div id="progress-bar" class=""></div>
+        </div>
+      </div>
+
+      <div class="glass-strong overflow-hidden">
+        <div class="bg-gradient-to-r from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] text-white p-6">
+          <h2 id="question-title" class="text-xl font-bold">性別を教えてください</h2>
+        </div>
+        <div id="question-content" class="p-6"></div>
+      </div>
+
+      <div class="flex gap-4">
+        <button id="back-btn" data-i18n="common.back" onclick="previousStep()" class="hidden flex-1 h-12 rounded-2xl border-2 border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">戻る</button>
+        <button id="next-btn" onclick="nextStep()" class="flex-1 h-12 glass-btn text-[color:var(--text-deep)] rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 disabled:opacity-50">
+          次へ
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-screen" class="hidden p-4 pt-20">
+      <div class="text-center space-y-8">
+        <div class="relative inline-block">
+          <div class="w-24 h-24 bg-gradient-to-br from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] rounded-3xl flex items-center justify-center mx-auto shadow-lg glass-strong">
+            <div class="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <h2 class="text-2xl font-bold bg-clip-text text-transparent" style="background-image: linear-gradient(90deg, var(--sea-mid), var(--sea-deep));">AIが観光プランを生成中...</h2>
+          <p class="text-gray-600">あなたの好みを分析して最適なルートを提案しています</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results-screen" class="hidden p-4 space-y-6 pt-8">
+      <div class="text-center space-y-4">
+        <div class="relative inline-block">
+          <div class="w-20 h-20 bg-gradient-to-br from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] rounded-3xl flex items-center justify-center mx-auto shadow-lg glass">
+            <svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold bg-clip-text text-transparent" style="background-image: linear-gradient(90deg, var(--sea-mid), var(--sea-deep));">あなたにおすすめの観光プラン</h1>
+          <p class="text-gray-600 mt-2">診断結果に基づいて最適なルートをご提案します</p>
+        </div>
+      </div>
+
+      <div class="glass-strong overflow-hidden">
+        <div class="bg-gradient-to-r from-[color:var(--sea-mid)] to-[color:var(--sea-deep)] text-white p-6">
+          <h2 class="flex items-center gap-3 text-xl font-bold"><span id="area-title">江ノ島・鎌倉</span> 観光コース</h2>
+          <div class="text-blue-100 mt-2" id="travel-style-text">ゆったりと楽しむコース</div>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <div class="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-2xl">
+            <svg class="h-5 w-5 text-[color:var(--sea-mid)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="font-semibold" id="est-time">所要時間: 約3時間45分</span>
+          </div>
+
+          <!-- Timeline container -->
+          <div id="spots-list" class="timeline"></div>
+
+          <!-- Lottery / progress -->
+          <div class="mt-2 flex items-center justify-between gap-3">
+            <div class="text-sm text-gray-600">チェックイン達成率: <span id="checkin-rate">0%</span></div>
+            <button id="lottery-btn" class="glass-btn" disabled onclick="enterLottery()">🎁 抽選に参加する</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <button data-i18n="results.view_map" onclick="showScreen('map')" class="w-full h-14 glass-btn text-[color:var(--text-deep)] rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105">地図で詳細ルートを見る</button>
+        <button data-i18n="results.view_coupons" onclick="showScreen('coupons')" class="w-full h-14 border-2 border-[color:var(--sea-mid)] text-[color:var(--sea-deep)] hover:bg-[color:#f0fffe] rounded-2xl transition-all duration-200">クーポンを見る</button>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map-screen" class="hidden p-4 space-y-4 pt-8 fade-in">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gray-800" data-i18n="map.title">地図でルートを確認</h2>
+        <button onclick="showScreen('results')" class="text-[color:var(--sea-mid)] underline">プランに戻る</button>
+      </div>
+      <div id="map" class="bg-gray-200"></div>
+      <div class="text-xs text-gray-500">地図: © OpenStreetMap contributors</div>
+      <div id="transit-info" class="space-y-3"></div>
+    </div>
+
+    <!-- Coupons -->
+    <div id="coupons-screen" class="hidden p-4 space-y-4 pt-8 fade-in">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gray-800" data-i18n="coupon.title">獲得クーポン</h2>
+        <button onclick="showScreen('results')" class="text-[color:var(--sea-mid)] underline">プランに戻る</button>
+      </div>
+      <div id="coupon-list" class="space-y-3"></div>
+    </div>
+
+    <!-- Coupon detail -->
+    <div id="coupon-detail-screen" class="hidden p-4 space-y-4 pt-8 fade-in">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gray-800">クーポン詳細</h2>
+        <button onclick="showScreen('coupons')" class="text-[color:var(--sea-mid)] underline">一覧に戻る</button>
+      </div>
+      <div class="bg-white rounded-2xl border p-5 space-y-3 glass">
+        <div class="text-lg font-semibold text-gray-800" id="cd-title"></div>
+        <div class="text-sm text-gray-500" id="cd-spot"></div>
+        <div class="text-sm text-gray-700" id="cd-desc"></div>
+        <div class="flex items-center justify-between">
+          <div class="text-base font-bold text-[color:var(--sea-mid)]" id="cd-discount"></div>
+          <div class="text-xs text-gray-500" id="cd-valid"></div>
+        </div>
+        <div id="cd-status" class="text-sm"></div>
+        <button id="cd-use" class="w-full h-11 rounded-xl text-white bg-[color:var(--sea-mid)] hover:bg-[color:#06b6d4] transition">使う</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Nav bar -->
+  <div id="nav-bar" class="hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 z-50">
+    <div class="max-w-md mx-auto flex justify-around">
+      <button onclick="showScreen('intro')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-xs font-medium" data-i18n="nav.home">ホーム</span>
+      </button>
+      <button onclick="showScreen('diagnosis')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <span class="text-xs font-medium" data-i18n="nav.diagnosis">診断</span>
+      </button>
+      <button onclick="showScreen('results')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500">
+        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        <span class="text-xs font-medium" data-i18n="nav.plan">プラン</span>
+      </button>
+      <button onclick="showScreen('map')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-xs font-medium" data-i18n="nav.map">地図</span>
+      </button>
+      <button onclick="showScreen('coupons')" class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 text-gray-500">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>
+        <span class="text-xs font-medium" data-i18n="nav.coupons">クーポン</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================
+       i18n texts (ja/en/zh/ko)
+       Keys used across UI and STEPS
+       ========================== */
+    let currentLang = 'ja';
+
+    const TEXTS = {
+      ja: {
+        'app.title':'江ノ島・鎌倉','app.subtitle':'AI観光ルート生成','app.partners':'中央大学岡嶋ゼミ × 神奈川県観光協会',
+        'intro.about':'プロジェクトについて','intro.lead':'あなたの好みに合わせて最適な観光ルートを自動生成します。',
+        'intro.feature1.title':'AIパーソナライズ','intro.feature1.desc':'診断結果に基づいて、あなただけの観光プランを生成',
+        'intro.feature2.title':'リアルタイムチェックイン','intro.feature2.desc':'GPS連動で観光地を訪問してポイントを獲得',
+        'intro.feature3.title':'特典クーポン','intro.feature3.desc':'観光地での割引や特典を即座に獲得',
+        'intro.start':'AI観光ルート生成を開始','diagnosis.progress':'診断進行状況','common.back':'戻る','common.next':'次へ','diagnosis.view_result':'診断結果を見る',
+        'results.view_map':'地図で詳細ルートを見る','results.view_coupons':'クーポンを見る','map.title':'地図でルートを確認',
+        'coupon.title':'獲得クーポン','coupon.detail':'クーポン詳細','coupon.back_list':'一覧に戻る','coupon.use':'使う','coupon.used':'使用済み','coupon.confirm':'本当にこのクーポンを使いますか？一度使用済みにすると戻せません。',
+        'nav.home':'ホーム','nav.diagnosis':'診断','nav.plan':'プラン','nav.map':'地図','nav.coupons':'クーポン',
+        'steps.gender.title':'性別を教えてください','options.gender.male':'男性','options.gender.female':'女性','options.gender.other':'その他',
+        'steps.age.title':'年齢層を教えてください','options.age.10s':'10代','options.age.20s':'20代','options.age.30s':'30代','options.age.40s':'40代','options.age.50s':'50代以上',
+        'steps.mustVisit.title':'絶対に行きたい場所はありますか？','options.mustVisit.enoshima':'江ノ島','options.mustVisit.kamakura':'鎌倉','options.mustVisit.both':'両方','options.mustVisit.undecided':'まだ決めていない',
+        'steps.travelStyle.title':'旅行スタイルを教えてください','options.travelStyle.relaxed':'ゆっくり観光','options.travelStyle.active':'アクティブに回る','options.travelStyle.cultural':'文化・歴史重視','options.travelStyle.gourmet':'グルメ重視',
+        'steps.startLocation.title':'観光開始場所を教えてください','options.startLocation.enoshima_station':'江ノ島駅','options.startLocation.kamakura_station':'鎌倉駅','options.startLocation.fujisawa_station':'藤沢駅','options.startLocation.other':'その他（自由記述）',
+        'steps.customStartLocation.title':'その他の場合は開始場所を教えてください','steps.startTime.title':'観光開始時間を教えてください','steps.endTime.title':'帰路につく時間を教えてください',
+        'steps.whatToDo.title':'やりたいことを自由に教えてください','steps.customSpot.title':'特に行きたい場所があれば教えてください',
+        'placeholder.customStartLocation':'例: 新宿駅、横浜駅、自宅住所など','placeholder.whatToDo':'例: 写真を撮りたい、美味しいものを食べたい など','placeholder.customSpot':'例: 鎌倉文学館 など',
+        'results.stay':'滞在時間','results.fee':'入場料'
+      },
+      en: {
+        'app.title':'Enoshima & Kamakura','app.subtitle':'AI Tour Route Generator','app.partners':'Chuo Univ. Okajima Seminar × Kanagawa Tourism',
+        'intro.about':'About the Project','intro.lead':'We generate the best tour route tailored to your preferences.',
+        'intro.feature1.title':'AI Personalization','intro.feature1.desc':'Generate a tour plan just for you',
+        'intro.feature2.title':'Real-time Check-in','intro.feature2.desc':'Earn points by visiting spots via GPS',
+        'intro.feature3.title':'Special Coupons','intro.feature3.desc':'Get discounts and perks instantly',
+        'intro.start':'Start AI Route Generation','diagnosis.progress':'Progress','common.back':'Back','common.next':'Next','diagnosis.view_result':'View Results',
+        'results.view_map':'View detailed route on Map','results.view_coupons':'View Coupons','map.title':'Check Route on Map',
+        'coupon.title':'Coupons','coupon.detail':'Coupon Details','coupon.back_list':'Back to List','coupon.use':'Use','coupon.used':'Used','coupon.confirm':'Use this coupon? This cannot be undone.',
+        'nav.home':'Home','nav.diagnosis':'Diagnosis','nav.plan':'Plan','nav.map':'Map','nav.coupons':'Coupons',
+        'steps.gender.title':'Please tell us your gender','options.gender.male':'Male','options.gender.female':'Female','options.gender.other':'Other',
+        'steps.age.title':'Please select your age group','options.age.10s':'Teens','options.age.20s':'20s','options.age.30s':'30s','options.age.40s':'40s','options.age.50s':'50+',
+        'steps.mustVisit.title':'Any must-visit area?','options.mustVisit.enoshima':'Enoshima','options.mustVisit.kamakura':'Kamakura','options.mustVisit.both':'Both','options.mustVisit.undecided':'Undecided',
+        'steps.travelStyle.title':'Your travel style','options.travelStyle.relaxed':'Relaxed','options.travelStyle.active':'Active','options.travelStyle.cultural':'Culture/History','options.travelStyle.gourmet':'Gourmet',
+        'steps.startLocation.title':'Where do you start?','options.startLocation.enoshima_station':'Enoshima Station','options.startLocation.kamakura_station':'Kamakura Station','options.startLocation.fujisawa_station':'Fujisawa Station','options.startLocation.other':'Other (free text)',
+        'steps.customStartLocation.title':'If other, please specify your start location','steps.startTime.title':'Select your start time','steps.endTime.title':'Select your return time',
+        'steps.whatToDo.title':'Tell us what you want to do (optional)','steps.customSpot.title':'Any specific spot you want to visit? (optional)',
+        'placeholder.customStartLocation':'e.g., Shinjuku Station, Yokohama, home address','placeholder.whatToDo':'e.g., Take many photos, eat tasty food, learn history','placeholder.customSpot':'e.g., Kamakura Museum of Literature',
+        'results.stay':'Stay','results.fee':'Entrance fee'
+      },
+      zh: {
+        'app.title':'江之岛・镰仓','app.subtitle':'AI 观光路线生成','app.partners':'中央大学冈嶋研究室 × 神奈川县观光协会',
+        'intro.about':'项目简介','intro.lead':'根据您的喜好自动生成最佳观光路线。',
+        'intro.feature1.title':'AI 个性化','intro.feature1.desc':'基于问答为您生成专属行程',
+        'intro.feature2.title':'实时打卡','intro.feature2.desc':'通过 GPS 到访景点获得积分',
+        'intro.feature3.title':'优惠券','intro.feature3.desc':'即时获取折扣与特典',
+        'intro.start':'开始生成 AI 路线','diagnosis.progress':'进度','common.back':'返回','common.next':'下一步','diagnosis.view_result':'查看结果',
+        'results.view_map':'在地图上查看详细路线','results.view_coupons':'查看优惠券','map.title':'在地图上确认路线',
+        'coupon.title':'优惠券','coupon.detail':'优惠券详情','coupon.back_list':'返回列表','coupon.use':'使用','coupon.used':'已使用','coupon.confirm':'确定使用该优惠券？此操作无法撤销。',
+        'nav.home':'首页','nav.diagnosis':'诊断','nav.plan':'方案','nav.map':'地图','nav.coupons':'优惠券',
+        'steps.gender.title':'请选择您的性别','options.gender.male':'男','options.gender.female':'女','options.gender.other':'其他',
+        'steps.age.title':'请选择您的年龄段','options.age.10s':'10多岁','options.age.20s':'20多岁','options.age.30s':'30多岁','options.age.40s':'40多岁','options.age.50s':'50岁以上',
+        'steps.mustVisit.title':'有必须去的区域吗？','options.mustVisit.enoshima':'江之岛','options.mustVisit.kamakura':'镰仓','options.mustVisit.both':'两者','options.mustVisit.undecided':'未决定',
+        'steps.travelStyle.title':'旅行风格','options.travelStyle.relaxed':'轻松观光','options.travelStyle.active':'活力游玩','options.travelStyle.cultural':'文化/历史','options.travelStyle.gourmet':'美食优先',
+        'steps.startLocation.title':'起点','options.startLocation.enoshima_station':'江之岛站','options.startLocation.kamakura_station':'镰仓站','options.startLocation.fujisawa_station':'藤泽站','options.startLocation.other':'其他（自由输入）',
+        'steps.customStartLocation.title':'若为其他，请输入起点','steps.startTime.title':'请选择开始时间','steps.endTime.title':'请选择返回时间',
+        'steps.whatToDo.title':'想做什么（可选）','steps.customSpot.title':'有想去的具体地点吗（可选）',
+        'placeholder.customStartLocation':'例如：新宿站、横滨、家庭住址','placeholder.whatToDo':'例如：拍照、美食、学习历史','placeholder.customSpot':'例如：镰仓文学馆',
+        'results.stay':'停留时间','results.fee':'门票'
+      },
+      ko: {
+        'app.title':'에노시마・가마쿠라','app.subtitle':'AI 관광 루트 생성','app.partners':'추오대학 오카지마ゼミ × 가나가와현 관광협회',
+        'intro.about':'프로젝트 소개','intro.lead':'선호에 맞춘 최적의 관광 루트를 자동 생성합니다.',
+        'intro.feature1.title':'AI 개인화','intro.feature1.desc':'진단 결과를 바탕으로 당신만의 관광 플랜 생성',
+        'intro.feature2.title':'실시간 체크인','intro.feature2.desc':'GPS 연동으로 방문하고 포인트 획득',
+        'intro.feature3.title':'특전 쿠폰','intro.feature3.desc':'관광지에서 할인 및 특전을 즉시 획득',
+        'intro.start':'AI 관광 루트 생성 시작','diagnosis.progress':'진행 상황','common.back':'뒤로','common.next':'다음','diagnosis.view_result':'결과 보기',
+        'results.view_map':'지도에서 상세 경로 보기','results.view_coupons':'쿠폰 보기','map.title':'지도에서 루트 확인',
+        'coupon.title':'쿠폰','coupon.detail':'쿠폰 상세','coupon.back_list':'목록으로','coupon.use':'사용','coupon.used':'사용됨','coupon.confirm':'이 쿠폰을 사용하시겠습니까? 한 번 사용하면 되돌릴 수 없습니다.',
+        'nav.home':'홈','nav.diagnosis':'진단','nav.plan':'플랜','nav.map':'지도','nav.coupons':'쿠폰',
+        'steps.gender.title':'성별을 알려주세요','options.gender.male':'남성','options.gender.female':'여성','options.gender.other':'기타',
+        'steps.age.title':'연령대를 알려주세요','options.age.10s':'10대','options.age.20s':'20대','options.age.30s':'30대','options.age.40s':'40대','options.age.50s':'50대 이상',
+        'steps.mustVisit.title':'꼭 가고 싶은 곳이 있나요?','options.mustVisit.enoshima':'에노시마','options.mustVisit.kamakura':'가마쿠라','options.mustVisit.both':'둘다','options.mustVisit.undecided':'미정',
+        'steps.travelStyle.title':'여행 스타일','options.travelStyle.relaxed':'여유롭게','options.travelStyle.active':'활동적으로','options.travelStyle.cultural':'문화・역사 중심','options.travelStyle.gourmet':'미식 중심',
+        'steps.startLocation.title':'출발지를 알려주세요','options.startLocation.enoshima_station':'에노시마 역','options.startLocation.kamakura_station':'가마쿠라 역','options.startLocation.fujisawa_station':'후지사와 역','options.startLocation.other':'기타（자유 입력）',
+        'steps.customStartLocation.title':'기타의 경우 출발지를 입력해 주세요','steps.startTime.title':'출발 시간을 알려주세요','steps.endTime.title':'돌아가는 시간을 알려주세요',
+        'steps.whatToDo.title':'하고 싶은 것을 자유롭게 적어주세요','steps.customSpot.title':'특히 가고 싶은 장소가 있다면 적어주세요',
+        'placeholder.customStartLocation':'예: 신주쿠역, 요코하마, 자택 주소 등','placeholder.whatToDo':'예: 사진 찍기, 맛집 탐방, 역사 배우기','placeholder.customSpot':'예: 가마쿠라 문학관'
+      }
+    };
+
+    function t(key){
+      return (TEXTS[currentLang] && TEXTS[currentLang][key]) || (TEXTS['ja'][key] || '');
+    }
+
+    /* ===============
+       DEMO_PLAN (same spots as before)
+       and SPOT translations for all spots
+       =============== */
+    const DEMO_PLAN = [
+      { id: "start-kamakura", name: "JR・江ノ電 鎌倉駅", description: "旅のスタート", duration: 0, entrance_fee: 0, tags: ["スタート"], tips: [], startTime: "10:00", endTime: "10:10", order: 1, lat: 35.3187, lng: 139.5503 },
+      { id: "tsurugaoka", name: "鶴岡八幡宮", description: "【有名】 参拝", duration: 60, entrance_fee: 0, tags: ["神社","参拝"], tips: ["参道の真ん中は神様の通り道。手水舎で身を清め、『二礼二拍手一礼』で参拝。境内での食事・休憩は禁止。"], startTime: "10:10", endTime: "11:10", order: 2, lat: 35.3259, lng: 139.5565 },
+      { id: "komachidori", name: "小町通り", description: "散策", duration: 30, entrance_fee: 0, tags: ["散策","商店街"], tips: ["食べ歩きは自粛推奨。購入品は店舗の指定場所でいただきましょう。"], startTime: "11:10", endTime: "11:40", order: 3, lat: 35.3215, lng: 139.5555 },
+      { id: "to-wadazuka", name: "鎌倉駅 → 和田塚駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "11:40", endTime: "11:50", order: 4, lat: 35.3136, lng: 139.5397 },
+      { id: "wadazuka", name: "和田塚", description: "【マイナー】 史跡見学", duration: 20, entrance_fee: 0, tags: ["史跡"], tips: ["静かな住宅街。大声を出さず、史跡や柵に腰掛けない。"], startTime: "11:50", endTime: "12:10", order: 5, lat: 35.3136, lng: 139.5397 },
+      { id: "hoshinoi", name: "星の井 (ほしのい)", description: "【ピンポイント店】 昼食（そば）", duration: 60, entrance_fee: 0, tags: ["昼食","そば"], tips: ["観光客が少ない場所でゆっくり昼食に最適。長時間の通話は控えめに。"], startTime: "12:10", endTime: "13:10", order: 6, lat: 35.3130, lng: 139.5405 },
+      { id: "to-hase", name: "和田塚駅 → 長谷駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "13:10", endTime: "13:20", order: 7, lat: 35.3127, lng: 139.5360 },
+      { id: "mushinan", name: "無心庵", description: "【ピンポイント店】 休憩・甘味", duration: 60, entrance_fee: 0, tags: ["甘味","休憩"], tips: ["店内や線路付近の撮影は他のお客様と電車の安全に配慮。"], startTime: "13:20", endTime: "14:20", order: 8, lat: 35.3124, lng: 139.5364 },
+      { id: "kotokuin", name: "鎌倉大仏殿 高徳院", description: "【有名】 拝観", duration: 60, entrance_fee: 300, tags: ["寺院","大仏"], tips: ["寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。"], startTime: "14:20", endTime: "15:20", order: 9, lat: 35.3167, lng: 139.5353 },
+      { id: "goryo", name: "御霊神社（ごりょうじんじゃ）", description: "【マイナー】 参拝・江ノ電撮影", duration: 40, entrance_fee: 0, tags: ["神社","撮影"], tips: ["線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。"], startTime: "15:20", endTime: "16:00", order: 10, lat: 35.3139, lng: 139.5358 },
+      { id: "to-inamura", name: "長谷駅 → 稲村ヶ崎駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:00", endTime: "16:10", order: 11, lat: 35.3094, lng: 139.5220 },
+      { id: "inamuragasaki", name: "稲村ヶ崎公園", description: "【マイナービュー】 散策・写真撮影", duration: 40, entrance_fee: 0, tags: ["公園","写真"], tips: ["夕景が特に美しい。ゴミは必ず持ち帰る。"], startTime: "16:10", endTime: "16:50", order: 12, lat: 35.3094, lng: 139.5220 },
+      { id: "to-enoshima-st", name: "稲村ヶ崎駅 → 江ノ島駅", description: "江ノ電で移動", duration: 15, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:50", endTime: "17:05", order: 13, lat: 35.3058, lng: 139.4816 },
+      { id: "walk-enoshima", name: "江ノ島へ移動", description: "徒歩", duration: 30, entrance_fee: 0, tags: ["徒歩","移動"], tips: [], startTime: "17:05", endTime: "17:35", order: 14, lat: 35.3005, lng: 139.4802 },
+      { id: "sea-candle", name: "サムエル・コッキング苑 / シーキャンドル", description: "【有名】 展望・夕景", duration: 60, entrance_fee: 700, tags: ["展望","夕景"], tips: ["イベント期間は21:00まで延長あり。エスカー利用で体力温存。"], startTime: "17:35", endTime: "18:35", order: 15, lat: 35.2986, lng: 139.4799 },
+      { id: "iwaya", name: "江ノ島岩屋", description: "【マイナー】 洞窟体験", duration: 50, entrance_fee: 500, tags: ["洞窟"], tips: ["夏期は18:00最終入場の場合あり。足元に注意。"], startTime: "18:35", endTime: "19:25", order: 16, lat: 35.2906, lng: 139.4780 },
+      { id: "il-chianti", name: "イル・キャンティ", description: "【ピンポイント店】 夕食（イタリアン）", duration: 70, entrance_fee: 0, tags: ["夕食","イタリアン"], tips: ["人気店のため予約推奨。同エリア内で移動効率良。"], startTime: "19:25", endTime: "20:35", order: 17, lat: 35.3001, lng: 139.4793 },
+      { id: "goal-enoshima", name: "江ノ島駅", description: "ゴール", duration: 0, entrance_fee: 0, tags: ["ゴール"], tips: ["帰路へ。お疲れ様でした！"], startTime: "20:35", endTime: "20:35", order: 18, lat: 35.3058, lng: 139.4816 }
+    ];
+
+    // SPOT translations (complete mapping for these DEMO_PLAN IDs)
+    const SPOT_I18N = {
+      'start-kamakura': {
+        name: { ja:'JR・江ノ電 鎌倉駅', en:'JR / Enoden Kamakura Station', zh:'JR / 江之电 镰仓站', ko:'JR・에노덴 가마쿠라역' },
+        description: { ja:'旅のスタート', en:'Start of the trip', zh:'旅程开始', ko:'여행 시작' },
+        tips: { ja:[], en:[], zh:[], ko:[] }
+      },
+      'tsurugaoka': {
+        name: { ja:'鶴岡八幡宮', en:'Tsurugaoka Hachimangu Shrine', zh:'鹤冈八幡宫', ko:'쓰루오카 하치만구' },
+        description: { ja:'【有名】 参拝', en:'[Famous] Shrine visit', zh:'【有名】 参拜', ko:'【유명】 참배' },
+        tips: {
+          ja:['参道の真ん中は神様の通り道。手水舎で清め、「二礼二拍手一礼」で参拝。境内での飲食は不可。'],
+          en:['Do not walk in the center of the approach. Purify at the water basin; bow twice, clap twice, bow once. No eating/resting inside the grounds.'],
+          zh:['参道中央为神道，请在手水舍净手；“二拜二拍手一拜”。境内禁止饮食休憩。'],
+          ko:['참도 중앙은 신의 길입니다. 손을 씻고 “두 번 인사, 두 번 박수, 한 번 인사”로 참배하세요. 경내에서의 음식 섭취 금지.']
         }
-        const DEMO_PLAN = [
-            { id: "start-kamakura", name: "JR・江ノ電 鎌倉駅", description: "旅のスタート", duration: 0, entrance_fee: 0, tags: ["スタート"], tips: [], startTime: "10:00", endTime: "10:10", order: 1, lat: 35.3187, lng: 139.5503 },
-            { id: "tsurugaoka", name: "鶴岡八幡宮", description: "【有名】 参拝", duration: 60, entrance_fee: 0, tags: ["神社","参拝"], tips: ["参道の真ん中は神様の通り道。手水舎で身を清め、『二礼二拍手一礼』で参拝。境内での食事・休憩は禁止。"], startTime: "10:10", endTime: "11:10", order: 2, lat: 35.3259, lng: 139.5565 },
-            { id: "komachidori", name: "小町通り", description: "散策", duration: 30, entrance_fee: 0, tags: ["散策","商店街"], tips: ["食べ歩きは自粛推奨。購入品は店舗の指定場所でいただきましょう。"], startTime: "11:10", endTime: "11:40", order: 3, lat: 35.3215, lng: 139.5555 },
-            { id: "to-wadazuka", name: "鎌倉駅 → 和田塚駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "11:40", endTime: "11:50", order: 4, lat: 35.3136, lng: 139.5397 },
-            { id: "wadazuka", name: "和田塚", description: "【マイナー】 史跡見学", duration: 20, entrance_fee: 0, tags: ["史跡"], tips: ["静かな住宅街。大声を出さず、史跡や柵に腰掛けない。"], startTime: "11:50", endTime: "12:10", order: 5, lat: 35.3136, lng: 139.5397 },
-            { id: "hoshinoi", name: "星の井 (ほしのい)", description: "【ピンポイント店】 昼食（そば）", duration: 60, entrance_fee: 0, tags: ["昼食","そば"], tips: ["観光客が少ない場所でゆっくり昼食に最適。長時間の通話は控えめに。"], startTime: "12:10", endTime: "13:10", order: 6, lat: 35.3130, lng: 139.5405 },
-            { id: "to-hase", name: "和田塚駅 → 長谷駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "13:10", endTime: "13:20", order: 7, lat: 35.3127, lng: 139.5360 },
-            { id: "mushinan", name: "無心庵", description: "【ピンポイント店】 休憩・甘味", duration: 60, entrance_fee: 0, tags: ["甘味","休憩"], tips: ["店内や線路付近の撮影は他のお客様と電車の安全に配慮。"], startTime: "13:20", endTime: "14:20", order: 8, lat: 35.3124, lng: 139.5364 },
-            { id: "kotokuin", name: "鎌倉大仏殿 高徳院", description: "【有名】 拝観", duration: 60, entrance_fee: 300, tags: ["寺院","大仏"], tips: ["寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。"], startTime: "14:20", endTime: "15:20", order: 9, lat: 35.3167, lng: 139.5353 },
-            { id: "goryo", name: "御霊神社（ごりょうじんじゃ）", description: "【マイナー】 参拝・江ノ電撮影", duration: 40, entrance_fee: 0, tags: ["神社","撮影"], tips: ["線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。"], startTime: "15:20", endTime: "16:00", order: 10, lat: 35.3139, lng: 139.5358 },
-            { id: "to-inamura", name: "長谷駅 → 稲村ヶ崎駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:00", endTime: "16:10", order: 11, lat: 35.3094, lng: 139.5220 },
-            { id: "inamuragasaki", name: "稲村ヶ崎公園", description: "【マイナービュー】 散策・写真撮影", duration: 40, entrance_fee: 0, tags: ["公園","写真"], tips: ["夕景が特に美しい。ゴミは必ず持ち帰る。"], startTime: "16:10", endTime: "16:50", order: 12, lat: 35.3094, lng: 139.5220 },
-            { id: "to-enoshima-st", name: "稲村ヶ崎駅 → 江ノ島駅", description: "江ノ電で移動", duration: 15, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:50", endTime: "17:05", order: 13, lat: 35.3058, lng: 139.4816 },
-            { id: "walk-enoshima", name: "江ノ島へ移動", description: "徒歩", duration: 30, entrance_fee: 0, tags: ["徒歩"], tips: [], startTime: "17:05", endTime: "17:35", order: 14, lat: 35.3005, lng: 139.4802 },
-            { id: "sea-candle", name: "サムエル・コッキング苑 / シーキャンドル", description: "【有名】 展望・夕景", duration: 60, entrance_fee: 700, tags: ["展望","夕景"], tips: ["イベント期間は21:00まで延長あり。エスカー利用で体力温存。"], startTime: "17:35", endTime: "18:35", order: 15, lat: 35.2986, lng: 139.4799 },
-            { id: "iwaya", name: "江ノ島岩屋", description: "【マイナー】 洞窟体験", duration: 50, entrance_fee: 500, tags: ["洞窟"], tips: ["夏期は18:00最終入場の場合あり。足元に注意。"], startTime: "18:35", endTime: "19:25", order: 16, lat: 35.2906, lng: 139.4780 },
-            { id: "il-chianti", name: "イル・キャンティ", description: "【ピンポイント店】 夕食（イタリアン）", duration: 70, entrance_fee: 0, tags: ["夕食","イタリアン"], tips: ["人気店のため予約推奨。同エリア内で移動効率良。"], startTime: "19:25", endTime: "20:35", order: 17, lat: 35.3001, lng: 139.4793 },
-            { id: "goal-enoshima", name: "江ノ島駅", description: "ゴール", duration: 0, entrance_fee: 0, tags: ["ゴール"], tips: ["帰路へ。お疲れ様でした！"], startTime: "20:35", endTime: "20:35", order: 18, lat: 35.3058, lng: 139.4816 },
-        ];
-
-        const DEMO_COUPONS = [
-            { id: "c1", title: "エスカー割引券", description: "エスカー利用料金10%OFF", discount: "10%OFF", validUntil: "2025-12-31", spotName: "江島神社", used: false },
-            { id: "c2", title: "セット券割引", description: "シーキャンドル＋コッキング苑100円OFF", discount: "100円OFF", validUntil: "2025-12-31", spotName: "江ノ島シーキャンドル", used: false },
-            { id: "c3", title: "入場料割引券", description: "大人入場料200円OFF", discount: "200円OFF", validUntil: "2025-12-31", spotName: "新江ノ島水族館", used: false },
-        ];
-
-        // Spot i18n data (names, descriptions, tips)
-        const SPOT_I18N = {
-            'start-kamakura': {
-                name: {ja:'JR・江ノ電 鎌倉駅', en:'JR/Enoden Kamakura Station', zh:'JR/江之电 镰仓站', ko:'JR/에노덴 가마쿠라역'},
-                description: {ja:'旅のスタート', en:'Start of the trip', zh:'旅程开始', ko:'여행 시작'},
-                tips: {ja:[], en:[], zh:[], ko:[]}
-            },
-            'tsurugaoka': {
-                name: {ja:'鶴岡八幡宮', en:'Tsurugaoka Hachimangu Shrine', zh:'鹤冈八幡宫', ko:'츠루가오카 하치만구'},
-                description: {ja:'【有名】 参拝', en:'[Famous] Shrine visit', zh:'【有名】 参拜', ko:'[유명] 참배'},
-                tips: {ja:['参道中央は神様の通り道。手水舎で清め、「二礼二拍手一礼」で参拝。境内での飲食は不可。'], en:['Do not walk in the center of the approach. Purify at the water basin; bow twice, clap twice, bow once. No eating/resting inside grounds.'], zh:['参道中央为神道，先在手水舍净手；“二拜二拍手一拜”。境内禁止饮食休憩。'], ko:['참배길 중앙은 신의 길. 수조에서 정화 후 “2배 2박수 1배”. 경내 음식/휴식 금지.']}
-            },
-            'komachidori': {
-                name: {ja:'小町通り', en:'Komachi Street', zh:'小町通', ko:'고마치도오리'},
-                description: {ja:'散策', en:'Stroll', zh:'散步', ko:'산책'},
-                tips: {ja:['食べ歩きは自粛推奨。商品は店舗指定場所で。'], en:['Refrain from eating while walking. Eat at designated spots.'], zh:['建议避免边走边吃，请在店铺指定处用餐。'], ko:['먹거리 길거리 취식 자제, 지정 장소 이용.']}
-            },
-            'to-wadazuka': {
-                name: {ja:'鎌倉駅 → 和田塚駅', en:'Kamakura → Wadazuka', zh:'镰仓站 → 和田冢站', ko:'가마쿠라역 → 와다즈카역'},
-                description: {ja:'江ノ電で移動', en:'Enoden train', zh:'乘坐江之电', ko:'에노덴 이동'},
-                tips: {ja:[], en:[], zh:[], ko:[]}
-            },
-            'wadazuka': {
-                name: {ja:'和田塚', en:'Wadazuka', zh:'和田冢', ko:'와다즈카'},
-                description: {ja:'【マイナー】 史跡見学', en:'[Lesser-known] Historic site', zh:'【小众】 史迹参观', ko:'[마이너] 사적 견학'},
-                tips: {ja:['静かな住宅街。大声・腰掛けは控える。'], en:['Quiet residential area. Avoid loud voices and sitting on fences.'], zh:['安静住宅区，避免喧哗，不要坐在围栏上。'], ko:['조용한 주택가. 고성 금지, 울타리 착석 금지.']}
-            },
-            'hoshinoi': {
-                name: {ja:'星の井 (ほしのい)', en:'Hoshinoi (Soba)', zh:'星之井（荞麦面）', ko:'호시노이(소바)'},
-                description: {ja:'【ピンポイント店】 昼食（そば）', en:'[Specific] Lunch (soba)', zh:'【特定店】 午餐（荞麦面）', ko:'[지정 가게] 점심(소바)'},
-                tips: {ja:['静かな場所でゆっくり。長電話は控えめに。'], en:['Relax in a quiet place. Avoid long phone calls.'], zh:['在较安静的地方悠然用餐，避免长时间通话。'], ko:['조용히 식사, 장시간 통화 지양.']}
-            },
-            'to-hase': {
-                name: {ja:'和田塚駅 → 長谷駅', en:'Wadazuka → Hase', zh:'和田冢站 → 长谷站', ko:'와다즈카역 → 하세역'},
-                description: {ja:'江ノ電で移動', en:'Enoden train', zh:'乘坐江之电', ko:'에노덴 이동'},
-                tips: {ja:[], en:[], zh:[], ko:[]}
-            },
-            'mushinan': {
-                name: {ja:'無心庵', en:'Mushinan (Sweets)', zh:'无心庵（甜品）', ko:'무신안(디저트)'},
-                description: {ja:'【ピンポイント店】 休憩・甘味', en:'[Specific] Sweets & break', zh:'【特定店】 休息·甜品', ko:'[지정 가게] 휴식·디저트'},
-                tips: {ja:['店内・線路付近の撮影は周囲と安全に配慮。'], en:['Be mindful when taking photos inside or near tracks.'], zh:['店内与铁道附近拍照请注意他人与安全。'], ko:['가게 안/선로 주변 촬영 시 안전 유의.']}
-            },
-            'kotokuin': {
-                name: {ja:'鎌倉大仏殿 高徳院', en:'Kamakura Great Buddha (Kotoku-in)', zh:'镰仓大佛殿 高德院', ko:'가마쿠라 대불전 고토쿠인'},
-                description: {ja:'【有名】 拝観', en:'[Famous] Temple visit', zh:'【有名】 参观', ko:'[유명] 관람'},
-                tips: {ja:['寺院は拍手せず合掌一礼。胎内は撮影禁止の場合あり。'], en:['Temple: no clapping; bow with hands together. Inside statue may forbid photos.'], zh:['寺院参拜不拍手合掌一礼。佛像内部可能禁止拍照。'], ko:['사찰: 박수 금지, 합장 인사. 내부 촬영 금지일 수 있음.']}
-            },
-            'goryo': {
-                name: {ja:'御霊神社（ごりょうじんじゃ）', en:'Goryo Shrine', zh:'御灵神社', ko:'고료 신사'},
-                description: {ja:'【マイナー】 参拝・江ノ電撮影', en:'[Lesser-known] Visit & Enoden photo', zh:'【小众】 参拜与江之电拍摄', ko:'[마이너] 참배·에노덴 촬영'},
-                tips: {ja:['線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。'], en:['Do not enter tracks. No selfie sticks/tripods. Some areas may ban photos.'], zh:['禁止进入铁轨；禁用自拍杆与脚架；部分区域可能禁拍。'], ko:['선로 출입 금지, 셀카봉/삼각대 금지, 일부 구역 촬영 금지.']}
-            },
-            'to-inamura': {
-                name: {ja:'長谷駅 → 稲村ヶ崎駅', en:'Hase → Inamuragasaki', zh:'长谷站 → 稻村崎站', ko:'하세역 → 이나무라가사키역'},
-                description: {ja:'江ノ電で移動', en:'Enoden train', zh:'乘坐江之电', ko:'에노덴 이동'},
-                tips: {ja:[], en:[], zh:[], ko:[]}
-            },
-            'inamuragasaki': {
-                name: {ja:'稲村ヶ崎公園', en:'Inamuragasaki Park', zh:'稻村崎公园', ko:'이나무라가사키 공원'},
-                description: {ja:'【マイナービュー】 散策・写真撮影', en:'[View] Stroll & photos', zh:'【景观】 散步·摄影', ko:'[전망] 산책·사진'},
-                tips: {ja:['夕景が美しい。ゴミは持ち帰る。'], en:['Beautiful at dusk. Carry your trash out.'], zh:['傍晚景色最美。垃圾请自带走。'], ko:['노을 풍경이 아름다움. 쓰레기 되가져가기.']}
-            },
-            'to-enoshima-st': {
-                name: {ja:'稲村ヶ崎駅 → 江ノ島駅', en:'Inamuragasaki → Enoshima', zh:'稻村崎站 → 江之岛站', ko:'이나무라가사키역 → 에노시마역'},
-                description: {ja:'江ノ電で移動', en:'Enoden train', zh:'乘坐江之电', ko:'에노덴 이동'},
-                tips: {ja:[], en:[], zh:[], ko:[]}
-            },
-            'walk-enoshima': {
-                name: {ja:'江ノ島へ移動', en:'Walk to Enoshima', zh:'步行前往江之岛', ko:'에노시마로 이동'},
-                description: {ja:'徒歩', en:'Walk', zh:'步行', ko:'도보'},
-                tips: {ja:[], en:[], zh:[], ko:[]}
-            },
-            'sea-candle': {
-                name: {ja:'サムエル・コッキング苑 / シーキャンドル', en:'Samuel Cocking Garden / Sea Candle', zh:'塞缪尔植物园 / 海蜡烛塔', ko:'사뮤엘 코킹엔 / 시 캔들'},
-                description: {ja:'【有名】 展望・夕景', en:'[Famous] Observatory & sunset', zh:'【有名】 观景·夕阳', ko:'[유명] 전망·노을'},
-                tips: {ja:['イベント時は延長営業あり。エ스カー活用で体力温存。'], en:['Open late during events. Use the escalator (Es-Car) to save energy.'], zh:['活动期间可能延时营业。建议使用自动扶梯节省体力。'], ko:['이벤트 시 연장 영업. 에스컬레이터 이용 추천.']}
-            },
-            'iwaya': {
-                name: {ja:'江ノ島岩屋', en:'Enoshima Iwaya Caves', zh:'江之岛岩屋洞', ko:'에노시마 이와야 동굴'},
-                description: {ja:'【マイナー】 洞窟体験', en:'[Lesser-known] Cave experience', zh:'【小众】 洞穴体验', ko:'[마이너] 동굴 체험'},
-                tips: {ja:['夏期は最終入場時間に注意。足元注意。'], en:['Check summer last entry time. Watch your step.'], zh:['夏季请注意最晚入场时间。注意脚下安全。'], ko:['여름철 최종 입장 시간 확인. 발밑 주의.']}
-            },
-            'il-chianti': {
-                name: {ja:'イル・キャンティ', en:'Il Chianti', zh:'Il Chianti（意餐）', ko:'일 캔티(이탈리안)'},
-                description: {ja:'【ピンポイント店】 夕食（イタリアン）', en:'[Specific] Dinner (Italian)', zh:'【特定店】 晚餐（意餐）', ko:'[지정 가게] 저녁(이탈리안)'},
-                tips: {ja:['人気店のため予約推奨。'], en:['Popular restaurant; reservation recommended.'], zh:['人气餐厅，建议预约。'], ko:['인기 맛집, 예약 권장.']}
-            },
-            'goal-enoshima': {
-                name: {ja:'江ノ島駅', en:'Enoshima Station', zh:'江之岛站', ko:'에노시마역'},
-                description: {ja:'ゴール', en:'Goal', zh:'终点', ko:'골'},
-                tips: {ja:['お疲れ様でした！'], en:['Great job!'], zh:['辛苦了！'], ko:['수고하셨습니다!']}
-            },
-        };
-
-        function getSpotText(id, field){ const e=SPOT_I18N[id]; if(!e) return ''; const data=e[field]; return data ? (data[currentLang] || data.ja || '') : ''; }
-        function getSpotArray(id, field){ const e=SPOT_I18N[id]; if(!e) return []; const data=e[field]; return data ? (data[currentLang] || data.ja || []) : []; }
-
-        const STEPS = [
-            { title: "steps.gender.title", key: "gender", options: [{value:"male",label:"options.gender.male"},{value:"female",label:"options.gender.female"},{value:"other",label:"options.gender.other"}] },
-            { title: "steps.age.title", key: "age", options: [{value:"10s",label:"options.age.10s"},{value:"20s",label:"options.age.20s"},{value:"30s",label:"options.age.30s"},{value:"40s",label:"options.age.40s"},{value:"50s",label:"options.age.50s"}] },
-            { title: "steps.mustVisit.title", key: "mustVisit", options: [{value:"enoshima",label:"options.mustVisit.enoshima"},{value:"kamakura",label:"options.mustVisit.kamakura"},{value:"both",label:"options.mustVisit.both"},{value:"undecided",label:"options.mustVisit.undecided"}] },
-            { title: "steps.travelStyle.title", key: "travelStyle", options: [{value:"relaxed",label:"options.travelStyle.relaxed"},{value:"active",label:"options.travelStyle.active"},{value:"cultural",label:"options.travelStyle.cultural"},{value:"gourmet",label:"options.travelStyle.gourmet"}] },
-            { title: "steps.startLocation.title", key: "startLocation", options: [{value:"enoshima_station",label:"options.startLocation.enoshima_station"},{value:"kamakura_station",label:"options.startLocation.kamakura_station"},{value:"fujisawa_station",label:"options.startLocation.fujisawa_station"},{value:"other",label:"options.startLocation.other"}] },
-            { title: "steps.customStartLocation.title", key: "customStartLocation", isCustomInput: true, condition: (d)=>d.startLocation === 'other' },
-            { title: "steps.startTime.title", key: "startTime", isTimeInput: true },
-            { title: "steps.endTime.title", key: "endTime", isTimeInput: true },
-            { title: "steps.whatToDo.title", key: "whatToDo", isCustomInput: true, isOptional: true },
-            { title: "steps.customSpot.title", key: "customSpot", isCustomInput: true, isOptional: true },
-        ];
-
-        let currentStep = 0;
-        let diagnosisData = {};
-        let mapInstance = null;
-        let mapReady = false;
-
-        function startDiagnosis() {
-            showScreen('diagnosis');
-            const total = document.getElementById('total-steps');
-            if (total) total.textContent = String(STEPS.length);
-            renderQuestion();
+      },
+      'komachidori': {
+        name: { ja:'小町通り', en:'Komachi Street', zh:'小町通', ko:'코마치 거리' },
+        description: { ja:'散策', en:'Stroll', zh:'散步', ko:'산책' },
+        tips: {
+          ja:['食べ歩きは自粛推奨。購入品は店舗の指定場所で。'],
+          en:['Refrain from eating while walking. Eat at designated spots.'],
+          zh:['建议避免边走边吃，请在店铺指定处用餐。'],
+          ko:['음식을 들고 걸어 먹지 않는 것을 권장합니다. 지정된 장소에서 드세요.']
         }
-
-        function renderQuestion() {
-            const step = STEPS[currentStep];
-            if (step.condition && !step.condition(diagnosisData)) { currentStep++; return renderQuestion(); }
-            document.getElementById('question-title').textContent = t(step.title) || step.title;
-            document.getElementById('step-number').textContent = currentStep + 1;
-            document.getElementById('step-progress').textContent = currentStep + 1;
-            document.getElementById('progress-bar').style.width = ((currentStep + 1) / STEPS.length * 100) + '%';
-            const content = document.getElementById('question-content');
-            content.innerHTML = '';
-            if (step.isCustomInput) {
-                const input = document.createElement('input');
-                input.type = 'text'; input.className = 'w-full h-12 rounded-2xl border-2 border-gray-200 focus:border-blue-500 transition-colors px-4';
-                const phMap = {
-                    customStartLocation: 'placeholder.customStartLocation',
-                    whatToDo: 'placeholder.whatToDo',
-                    customSpot: 'placeholder.customSpot'
-                };
-                const phKey = phMap[step.key] || '';
-                input.placeholder = phKey ? t(phKey) : '';
-                input.value = diagnosisData[step.key] || '';
-                input.oninput = (e)=>{ diagnosisData[step.key] = e.target.value; updateNextButton(); };
-                content.appendChild(input);
-                const p = document.createElement('p'); p.className = 'text-xs text-gray-500 text-center mt-4'; p.textContent = step.isOptional ? '（任意項目）空欄でも提案します' : '自由に入力してください'; content.appendChild(p);
-            } else if (step.isTimeInput) {
-                const input = document.createElement('input'); input.type = 'time'; input.className = 'w-full h-12 rounded-2xl border-2 border-gray-200 focus:border-blue-500 transition-colors text-center text-lg';
-                input.value = diagnosisData[step.key] || '';
-                input.onchange = (e)=>{ diagnosisData[step.key] = e.target.value; updateNextButton(); };
-                content.appendChild(input);
-            } else {
-                const group = document.createElement('div'); group.className = 'space-y-3';
-                step.options.forEach(opt=>{
-                    const label = document.createElement('label'); label.className = 'flex items-center space-x-4 p-4 rounded-2xl border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all duration-200';
-                    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = step.key; radio.value = opt.value; radio.className = 'peer sr-only'; radio.checked = diagnosisData[step.key] === opt.value;
-                    radio.onchange = ()=>{ diagnosisData[step.key] = opt.value; updateNextButton(); document.querySelectorAll(`input[name="${step.key}"]`).forEach(r=>{ const lbl = r.closest('label'); if (r.checked) { lbl.classList.add('border-blue-300','bg-blue-50'); } else { lbl.classList.remove('border-blue-300','bg-blue-50'); } }); };
-                    const outer = document.createElement('div'); outer.className = 'w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-500 peer-checked:bg-blue-500 flex items-center justify-center transition-colors';
-                    const inner = document.createElement('div'); inner.className = 'w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity';
-                    outer.appendChild(inner);
-                    const span = document.createElement('span'); span.className = 'text-gray-700 font-medium flex-1 peer-checked:text-blue-500 transition-colors'; span.textContent = t(opt.label) || opt.label;
-                    label.appendChild(radio); label.appendChild(outer); label.appendChild(span); group.appendChild(label);
-                });
-                content.appendChild(group);
-            }
-            updateNextButton();
-            document.getElementById('back-btn').classList.toggle('hidden', currentStep === 0);
-            applyI18n();
+      },
+      'to-wadazuka': {
+        name: { ja:'鎌倉駅 → 和田塚駅', en:'Kamakura → Wadazuka (Enoden)', zh:'镰仓站 → 和田塚站', ko:'가마쿠라역 → 와다즈카역 (에노덴)' },
+        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
+        tips: { ja:[], en:[], zh:[], ko:[] }
+      },
+      'wadazuka': {
+        name: { ja:'和田塚', en:'Wadazuka', zh:'和田塚', ko:'와다즈카' },
+        description: { ja:'【マイナー】 史跡見学', en:'[Lesser-known] Historical site visit', zh:'【偏僻】 史迹参观', ko:'【소규모】 사적 관람' },
+        tips: {
+          ja:['静かな住宅街。大声を出さず、史跡や柵に腰掛けない。'],
+          en:['Quiet residential area. Keep noise down and do not sit on ruins or fences.'],
+          zh:['安静的住宅区，请保持安静并勿坐在史迹或栏杆上。'],
+          ko:['조용한 주택가입니다. 큰 소리를 내지 말고 유적이나 울타리에 앉지 마세요.']
         }
-
-        function updateNextButton() {
-            const step = STEPS[currentStep]; const btn = document.getElementById('next-btn');
-            if (step.isOptional || step.isCustomInput) btn.disabled = false; else if (step.isTimeInput) btn.disabled = !diagnosisData[step.key]; else btn.disabled = !diagnosisData[step.key];
-            btn.textContent = currentStep === STEPS.length - 1 ? t('diagnosis.view_result') : t('common.next');
+      },
+      'hoshinoi': {
+        name: { ja:'星の井 (ほしのい)', en:'Hoshinoi (Soba)', zh:'星之井（荞麦面）', ko:'호시노이 (소바)' },
+        description: { ja:'昼食（そば）', en:'Lunch (soba)', zh:'午餐（荞麦面）', ko:'점심 (소바)' },
+        tips: {
+          ja:['観光客が少ない場所でゆっくり昼食に最適。長時間の通話は控えめに。'],
+          en:['A quiet spot suitable for a relaxed lunch. Please avoid long phone conversations.'],
+          zh:['适合悠闲午餐的安静地点，请避免长时间通话。'],
+          ko:['관광객이 적은 편으로 여유롭게 점심 먹기 좋습니다. 장시간 통화 자제 권장.']
         }
-
-        function nextStep() { if (currentStep < STEPS.length - 1) { currentStep++; renderQuestion(); } else { generatePlan(); } }
-        function previousStep() { if (currentStep > 0) { currentStep--; renderQuestion(); } }
-
-        function generatePlan() {
-            showOnly('loading');
-            setTimeout(()=>{ showScreen('results'); renderResults(); }, 2000);
+      },
+      'to-hase': {
+        name: { ja:'和田塚駅 → 長谷駅', en:'Wadazuka → Hase (Enoden)', zh:'和田塚站 → 长谷站', ko:'와다즈카역 → 하세역 (에노덴)' },
+        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
+        tips: { ja:[], en:[], zh:[], ko:[] }
+      },
+      'mushinan': {
+        name: { ja:'無心庵', en:'Mushinan (Cafe)', zh:'无心庵（茶馆）', ko:'무신안 (카페)' },
+        description: { ja:'休憩・甘味', en:'Rest / Sweets', zh:'休息・甜点', ko:'휴식・단과' },
+        tips: {
+          ja:['店内や線路付近の撮影は他のお客様と電車の安全に配慮。'],
+          en:['When photographing, be mindful of other customers and train safety near tracks.'],
+          zh:['拍照时请注意其他顾客与铁道安全。'],
+          ko:['내부 및 선로 근처 촬영 시 다른 고객 및 열차 안전을 유의하세요.']
         }
-
-        function renderResults() {
-            const areaTitle = document.getElementById('area-title');
-            areaTitle.textContent = diagnosisData.mustVisit === 'enoshima' ? '江ノ島' : diagnosisData.mustVisit === 'kamakura' ? '鎌倉' : '江ノ島・鎌倉';
-            const travelStyleText = document.getElementById('travel-style-text');
-            const styles = { relaxed: 'ゆったりと楽しむコース', active: 'アクティブに回るコース', cultural: '文化・歴史を感じるコース', gourmet: 'グルメを堪能するコース' };
-            travelStyleText.textContent = styles[diagnosisData.travelStyle] || 'ゆったりと楽しむコース';
-            const list = document.getElementById('spots-list'); list.innerHTML = '';
-            DEMO_PLAN.forEach((spot, i)=>{
-                const div = document.createElement('div'); div.className = 'relative fade-in'; div.style.animationDelay = (i*0.05)+'s';
-                const spotName = getSpotText(spot.id, 'name') || spot.name;
-                const spotDesc = getSpotText(spot.id, 'description') || spot.description;
-                const spotTip = getSpotArray(spot.id, 'tips')[0] || (spot.tips && spot.tips[0]) || '';
-                div.innerHTML = `<div class=\"flex items-start gap-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl border border-gray-200\"><div class=\"flex flex-col items-center\"><div class=\"w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg\">${spot.order}</div>${i < DEMO_PLAN.length - 1 ? '<div class=\\\"w-1 h-12 bg-gradient-to-b from-blue-300 to-green-300 mt-2 rounded-full\\\"></div>' : ''}</div><div class=\"flex-1\"><div class=\"flex items-center gap-2 mb-2\"><h4 class=\"font-semibold text-gray-800 text-lg\">${spotName}</h4></div><p class=\"text-sm text-gray-600 mb-3 leading-relaxed\">${spotDesc}</p><div class=\"flex items-center gap-4 text-xs text-gray-500 mb-3\"><span class=\"bg-white px-3 py-1 rounded-full\">${t('results.stay')}: ${spot.duration}${currentLang==='ja'?'分':currentLang==='zh'?'分钟':currentLang==='ko'?'분':'min'}</span>${spot.entrance_fee > 0 ? `<span class=\\\"bg-white px-3 py-1 rounded-full\\\">${t('results.fee')}: ${spot.entrance_fee}${currentLang==='en'?' JPY':'円'}</span>` : ''}${spot.startTime && spot.endTime ? `<span class=\\\"bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold\\\">${spot.startTime} - ${spot.endTime}</span>` : ''}</div>${spotTip ? `<div class=\\\"mt-3 p-3 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200\\\"><div class=\\\"flex items-start gap-2\\\"><div class=\\\"w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5\\\"><span class=\\\"text-xs\\\">💡</span></div><p class=\\\"text-xs text-yellow-800 font-medium\\\">${spotTip}</p></div></div>` : ''}</div></div>`;
-                list.appendChild(div);
-            });
-            renderCoupons();
+      },
+      'kotokuin': {
+        name: { ja:'鎌倉大仏殿 高徳院', en:'Kamakura Daibutsu (Kotoku-in)', zh:'镰仓大佛殿 高德院', ko:'가마쿠라 대불 고토쿠인' },
+        description: { ja:'拝観', en:'Temple viewing', zh:'参观', ko:'참배' },
+        tips: {
+          ja:['寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。'],
+          en:['At temples, do not clap; quietly put hands together and bow. Interior photography may be restricted.'],
+          zh:['在寺院请安静合十致礼，胎内拍照可能被禁止。'],
+          ko:['사원에서는 박수 대신 합장 후 고개 숙여 참배하세요. 내부 촬영 금지일 수 있음.']
         }
-
-        function renderCoupons() {
-            const container = document.getElementById('coupon-list'); if (!container) return; container.innerHTML = '';
-            DEMO_COUPONS.forEach(c=>{
-                const row = document.createElement('button'); row.type = 'button'; row.className = 'w-full text-left p-3 bg-white rounded-xl border hover:bg-gray-50 transition'; row.setAttribute('data-id', c.id);
-                row.innerHTML = `<div class=\"flex items-center justify-between\"><div><div class=\"text-sm font-medium text-gray-800\">${c.title}</div><div class=\"text-xs text-gray-500\">${c.spotName}</div></div><div class=\"text-right\"><div class=\"text-sm font-bold ${c.used ? 'text-gray-500' : 'text-green-600'}\">${c.discount}</div><div class=\"text-xs text-gray-400\">〜${c.validUntil}</div></div></div>`;
-                container.appendChild(row);
-            });
-            container.querySelectorAll('button[data-id]').forEach(btn=>{ btn.addEventListener('click', (e)=>{ const id = e.currentTarget.getAttribute('data-id'); openCouponDetail(id); }); });
+      },
+      'goryo': {
+        name: { ja:'御霊神社（ごりょうじんじゃ）', en:'Goryo Shrine', zh:'御灵神社', ko:'고료 신사' },
+        description: { ja:'参拝・江ノ電撮影', en:'Shrine visit & Enoden photo spot', zh:'参拜・江之电拍照点', ko:'참배・에노덴 촬영 포인트' },
+        tips: {
+          ja:['線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。'],
+          en:['Do not enter the tracks. Selfie sticks and tripods are prohibited. Some areas may forbid photography.'],
+          zh:['禁止进入铁轨。禁止使用自拍杆与三脚架。境内部分区域可能禁止拍照。'],
+          ko:['선로 침입 금지. 셀카봉 및 삼각대 금지. 경내 일부 촬영 금지일 수 있음.']
         }
-
-        function openCouponDetail(id) {
-            const c = DEMO_COUPONS.find(x=>x.id===id); if (!c) return;
-            document.getElementById('cd-title').textContent = c.title;
-            document.getElementById('cd-spot').textContent = `${c.spotName}`;
-            document.getElementById('cd-desc').textContent = c.description;
-            document.getElementById('cd-discount').textContent = c.discount;
-            document.getElementById('cd-valid').textContent = `有効期限: ${c.validUntil}`;
-            const status = document.getElementById('cd-status'); const useBtn = document.getElementById('cd-use');
-            useBtn.onclick = null;
-            if (c.used) {
-                status.textContent = t('coupon.used');
-                status.className = 'text-sm text-gray-500';
-                useBtn.setAttribute('disabled', 'true');
-                useBtn.className = 'w-full h-11 rounded-xl text-white bg-gray-400 cursor-not-allowed';
-                useBtn.textContent = t('coupon.used');
-            } else {
-                status.textContent = '';
-                useBtn.removeAttribute('disabled');
-                useBtn.className = 'w-full h-11 rounded-xl text-white bg-green-600 hover:bg-green-700 transition';
-                useBtn.textContent = t('coupon.use');
-                useBtn.onclick = () => {
-                    const yes = window.confirm(t('coupon.confirm'));
-                    if (!yes) return;
-                    c.used = true; // 不可逆
-                    openCouponDetail(id);
-                };
-            }
-            showOnly('coupon-detail');
+      },
+      'to-inamura': {
+        name: { ja:'長谷駅 → 稲村ヶ崎駅', en:'Hase → Inamuragasaki (Enoden)', zh:'长谷站 → 稻村崎站', ko:'하세역 → 이나무라가사키역 (에노덴)' },
+        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
+        tips: { ja:[], en:[], zh:[], ko:[] }
+      },
+      'inamuragasaki': {
+        name: { ja:'稲村ヶ崎公園', en:'Inamuragasaki Park', zh:'稻村崎公园', ko:'이나무라가사키 공원' },
+        description: { ja:'散策・写真撮影', en:'Stroll & photo spot', zh:'散步・拍照', ko:'산책・사진 촬영' },
+        tips: {
+          ja:['夕景が特に美しい。ゴミは必ず持ち帰る。'],
+          en:['The sunset view is particularly beautiful. Please take your trash home.'],
+          zh:['夕景尤为美丽，请务必带走垃圾。'],
+          ko:['석양 경치가 아름답습니다. 쓰레기는 반드시 가져가세요.']
         }
-
-        function initMapOnce() {
-            if (mapReady) return; mapReady = true;
-            const center = [35.3005, 139.4802];
-            mapInstance = L.map('map').setView(center, 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapInstance);
-            const latlngs = DEMO_PLAN.map(p=>[p.lat, p.lng]);
-            const markers = DEMO_PLAN.map((p,i)=> L.marker([p.lat,p.lng]).addTo(mapInstance).bindPopup(`${i+1}. ${p.name}`));
-            const line = L.polyline(latlngs, {color: '#2563eb'}).addTo(mapInstance);
-            mapInstance.fitBounds(line.getBounds(), { padding: [20,20] });
-            renderTransitInfo();
+      },
+      'to-enoshima-st': {
+        name: { ja:'稲村ヶ崎駅 → 江ノ島駅', en:'Inamuragasaki → Enoshima (Enoden)', zh:'稻村崎站 → 江之岛站', ko:'이나무라가사키역 → 에노시마역 (에노덴)' },
+        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
+        tips: { ja:[], en:[], zh:[], ko:[] }
+      },
+      'walk-enoshima': {
+        name: { ja:'江ノ島へ移動', en:'Walk to Enoshima', zh:'步行前往江之岛', ko:'에노시마까지 도보 이동' },
+        description: { ja:'徒歩', en:'Walk', zh:'步行', ko:'도보' },
+        tips: { ja:[], en:[], zh:[], ko:[] }
+      },
+      'sea-candle': {
+        name: { ja:'サムエル・コッキング苑 / シーキャンドル', en:'Samuel Cocking Garden / Sea Candle', zh:'塞缪尔·考金苑 / 海烛塔', ko:'사무엘 코킹 정원 / 씨 캔들' },
+        description: { ja:'展望・夕景', en:'Observation & sunset', zh:'观景・夕景', ko:'전망・석양' },
+        tips: {
+          ja:['イベント期間は21:00まで延長あり。エスカー利用で体力温存。'],
+          en:['During events it may be open until 21:00. Use the Escar to save energy.'],
+          zh:['活动期间可能开放至21:00。可使用电梯节省体力。'],
+          ko:['이벤트 기간에는 21:00까지 연장되는 경우가 있습니다. 에스카를 이용해 체력 절약.']
         }
-
-        const TRANSIT_INFO = [
-            { id:'seg1', time: '11:40-11:50', from: '鎌倉駅', to: '和田塚駅', mode: {ja:'江ノ電',en:'Enoden',zh:'江之电',ko:'에노덴'}, detail: {ja:'江ノ電で移動（約10分）', en:'Enoden train (~10 min)', zh:'乘坐江之电（约10分钟）', ko:'에노덴 이동(약 10분)'} },
-            { id:'seg2', time: '13:10-13:20', from: '和田塚駅', to: '長谷駅', mode: {ja:'江ノ電',en:'Enoden',zh:'江之电',ko:'에노덴'}, detail: {ja:'江ノ電で移動（約10分）', en:'Enoden train (~10 min)', zh:'乘坐江之电（约10分钟）', ko:'에노덴 이동(약 10분)'} },
-            { id:'seg3', time: '16:00-16:10', from: '長谷駅', to: '稲村ヶ崎駅', mode: {ja:'江ノ電',en:'Enoden',zh:'江之电',ko:'에노덴'}, detail: {ja:'江ノ電で移動（約10分）', en:'Enoden train (~10 min)', zh:'乘坐江之电（约10分钟）', ko:'에노덴 이동(약 10분)'} },
-            { id:'seg4', time: '16:50-17:05', from: '稲村ヶ崎駅', to: '江ノ島駅', mode: {ja:'江ノ電',en:'Enoden',zh:'江之电',ko:'에노덴'}, detail: {ja:'江ノ電で移動（約15分）', en:'Enoden train (~15 min)', zh:'乘坐江之电（约15分钟）', ko:'에노덴 이동(약 15분)'} },
-            { id:'seg5', time: '17:05-17:35', from: '江ノ島駅', to: '江ノ島', mode: {ja:'徒歩',en:'Walk',zh:'步行',ko:'도보'}, detail: {ja:'徒歩で移動（約30分）', en:'Walk (~30 min)', zh:'步行（约30分钟）', ko:'도보 이동(약 30분)'} },
-        ];
-
-        function renderTransitInfo() {
-            const container = document.getElementById('transit-info'); if (!container) return; container.innerHTML = '';
-            TRANSIT_INFO.forEach(seg => {
-                const card = document.createElement('div'); card.className = 'bg-white rounded-xl border p-4';
-                const mode = seg.mode[currentLang] || seg.mode.ja; const detail = seg.detail[currentLang] || seg.detail.ja;
-                card.innerHTML = `<div class=\"text-sm font-medium text-gray-800\">${seg.time} ${seg.from} → ${seg.to}</div><div class=\"text-xs text-gray-600 mt-1\">${mode} | ${detail}</div>`;
-                container.appendChild(card);
-            });
+      },
+      'iwaya': {
+        name: { ja:'江ノ島岩屋', en:'Enoshima Iwaya Caves', zh:'江之岛岩屋（洞窟）', ko:'에노시마 이와야 (동굴)' },
+        description: { ja:'洞窟体験', en:'Cave experience', zh:'洞穴体验', ko:'동굴 체험' },
+        tips: {
+          ja:['夏期は18:00最終入場の場合あり。足元に注意。'],
+          en:['In summer last entry may be 18:00. Watch your step.'],
+          zh:['夏季最晚入场可能为18:00，请注意脚下安全。'],
+          ko:['여름에는 최종 입장이 18:00일 수 있습니다. 발밑 주의하세요.']
         }
-
-        function showOnly(key) {
-            document.getElementById('intro-screen').classList.add('hidden');
-            document.getElementById('diagnosis-screen').classList.add('hidden');
-            document.getElementById('loading-screen').classList.add('hidden');
-            document.getElementById('results-screen').classList.add('hidden');
-            document.getElementById('map-screen').classList.add('hidden');
-            document.getElementById('coupons-screen').classList.add('hidden');
-            const map = { intro:'intro-screen', diagnosis:'diagnosis-screen', loading:'loading-screen', results:'results-screen', map:'map-screen', coupons:'coupons-screen' };
-            const id = map[key]; if (id) document.getElementById(id).classList.remove('hidden');
+      },
+      'il-chianti': {
+        name: { ja:'イル・キャンティ', en:'Il Chianti (Italian)', zh:'イル・キャンティ（意大利餐厅）', ko:'일 킨티 (이탈리안)' },
+        description: { ja:'夕食（イタリアン）', en:'Dinner (Italian)', zh:'晚餐（意大利菜）', ko:'저녁 (이탈리안)' },
+        tips: {
+          ja:['人気店のため予約推奨。同エリア内で移動効率良。'],
+          en:['Popular spot—reservation recommended. Efficient within this area.'],
+          zh:['人气店铺，建议预约。区域内移动效率良好。'],
+          ko:['인기 가게로 예약 권장. 동지역 내 이동 효율적.']
         }
+      },
+      'goal-enoshima': {
+        name: { ja:'江ノ島駅', en:'Enoshima Station', zh:'江之岛站', ko:'에노시마역' },
+        description: { ja:'ゴール', en:'Goal / End', zh:'终点', ko:'골' },
+        tips: { ja:['帰路へ。お疲れ様でした！'], en:['Return home. Thanks for traveling!'], zh:['返回。旅途愉快！'], ko:['귀가 경로로 이동. 수고하셨습니다!'] }
+      }
+    };
 
-        function showScreen(screen) {
-            showOnly(screen);
-            const nav = document.getElementById('nav-bar');
-            if (screen === 'intro') nav.classList.add('hidden'); else nav.classList.remove('hidden');
-            if (screen === 'map') { setTimeout(()=>{ initMapOnce(); mapInstance && mapInstance.invalidateSize(); }, 50); }
-            if (screen === 'coupons') { renderCoupons(); }
-            if (screen === 'results') { renderResults(); }
-            applyI18n();
-        }
+    // Demo coupons
+    const DEMO_COUPONS = [
+      { id: "c1", title: {ja:"エスカー割引券",en:"Escar Discount",zh:"电扶梯折扣券",ko:"에스카 할인권"}, description: {ja:"エスカー利用料金10%OFF",en:"10% off Escar fee",zh:"电扶梯费用9折",ko:"에스카 이용 요금 10% 할인"}, discount: "10%OFF", validUntil: "2025-12-31", spotName: "江島神社", used: false },
+      { id: "c2", title: {ja:"セット券割引",en:"Set Ticket Discount",zh:"套票折扣",ko:"세트권 할인"}, description: {ja:"シーキャンドル＋コッキング苑100円OFF",en:"100 JPY off Sea Candle + Garden",zh:"海烛塔+考金苑减100日元",ko:"씨캔들+가든 100엔 할인"}, discount: "¥100OFF", validUntil: "2025-12-31", spotName: "江ノ島シーキャンドル", used: false }
+    ];
 
-        // Language change
-        document.getElementById('lang-select').addEventListener('change', (e)=>{
-            currentLang = e.target.value;
-            applyI18n();
-            // re-render current view contents if needed
-            if (!document.getElementById('intro-screen').classList.contains('hidden')) {}
-            else if (!document.getElementById('diagnosis-screen').classList.contains('hidden')) { renderQuestion(); }
-            else if (!document.getElementById('results-screen').classList.contains('hidden')) { renderResults(); }
-            else if (!document.getElementById('coupons-screen').classList.contains('hidden')) { renderCoupons(); }
-            else if (!document.getElementById('map-screen').classList.contains('hidden')) { renderTransitInfo(); }
+    // STEPS (preserve original order & keys)
+    const STEPS = [
+      { title: "steps.gender.title", key: "gender", options: [{value:"male",label:"options.gender.male"},{value:"female",label:"options.gender.female"},{value:"other",label:"options.gender.other"}] },
+      { title: "steps.age.title", key: "age", options: [{value:"10s",label:"options.age.10s"},{value:"20s",label:"options.age.20s"},{value:"30s",label:"options.age.30s"},{value:"40s",label:"options.age.40s"},{value:"50s",label:"options.age.50s"}] },
+      { title: "steps.mustVisit.title", key: "mustVisit", options: [{value:"enoshima",label:"options.mustVisit.enoshima"},{value:"kamakura",label:"options.mustVisit.kamakura"},{value:"both",label:"options.mustVisit.both"},{value:"undecided",label:"options.mustVisit.undecided"}] },
+      { title: "steps.travelStyle.title", key: "travelStyle", options: [{value:"relaxed",label:"options.travelStyle.relaxed"},{value:"active",label:"options.travelStyle.active"},{value:"cultural",label:"options.travelStyle.cultural"},{value:"gourmet",label:"options.travelStyle.gourmet"}] },
+      { title: "steps.startLocation.title", key: "startLocation", options: [{value:"enoshima_station",label:"options.startLocation.enoshima_station"},{value:"kamakura_station",label:"options.startLocation.kamakura_station"},{value:"fujisawa_station",label:"options.startLocation.fujisawa_station"},{value:"other",label:"options.startLocation.other"}] },
+      { title: "steps.customStartLocation.title", key: "customStartLocation", isCustomInput: true, condition: (d)=>d.startLocation === 'other' },
+      { title: "steps.startTime.title", key: "startTime", isTimeInput: true },
+      { title: "steps.endTime.title", key: "endTime", isTimeInput: true },
+      { title: "steps.whatToDo.title", key: "whatToDo", isCustomInput: true, isOptional: true },
+      { title: "steps.customSpot.title", key: "customSpot", isCustomInput: true, isOptional: true }
+    ];
+
+    let currentStep = 0;
+    let diagnosisData = {};
+    let mapInstance = null;
+    let mapReady = false;
+
+    /* ---------- Utilities ---------- */
+    function escapeHtml(str){ if(!str) return ''; return String(str).replace(/[&<>"'`=\/]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'})[s]; }); }
+
+    /* ---------- i18n apply ---------- */
+    function applyI18n(){
+      document.querySelectorAll('[data-i18n]').forEach(el=>{
+        const key = el.getAttribute('data-i18n');
+        const txt = t(key);
+        if(txt) el.textContent = txt;
+      });
+      // update dynamic next button text
+      const nextBtn = document.getElementById('next-btn');
+      if(nextBtn) nextBtn.textContent = (STEPS && STEPS.length) ? (currentStep === STEPS.length - 1 ? t('diagnosis.view_result') : t('common.next')) : t('common.next');
+    }
+
+    /* ---------- Screen control (preserve structure) ---------- */
+    function showScreen(name){
+      const screens = ['intro-screen','diagnosis-screen','loading-screen','results-screen','map-screen','coupons-screen','coupon-detail-screen'];
+      screens.forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('hidden'); });
+      if(name === 'results') document.getElementById('results-screen').classList.remove('hidden');
+      else if(name === 'intro') document.getElementById('intro-screen').classList.remove('hidden');
+      else if(name === 'diagnosis') document.getElementById('diagnosis-screen').classList.remove('hidden');
+      else if(name === 'map') { document.getElementById('map-screen').classList.remove('hidden'); if(!mapReady) initMap(); }
+      else if(name === 'coupons') document.getElementById('coupons-screen').classList.remove('hidden');
+      else if(name === 'coupon-detail') document.getElementById('coupon-detail-screen').classList.remove('hidden');
+
+      const nav = document.getElementById('nav-bar');
+      if(name === 'intro') nav.classList.add('hidden'); else nav.classList.remove('hidden');
+    }
+
+    function startDiagnosis(){
+      showScreen('diagnosis');
+      const total = document.getElementById('total-steps');
+      if(total) total.textContent = String(STEPS.length);
+      currentStep = 0;
+      diagnosisData = {};
+      renderQuestion();
+      applyI18n();
+    }
+
+    /* ---------- Render Questions (unchanged semantics) ---------- */
+    function renderQuestion(){
+      if(currentStep < 0) currentStep = 0;
+      if(currentStep >= STEPS.length) return;
+      const step = STEPS[currentStep];
+      if(step.condition && !step.condition(diagnosisData)){ currentStep++; return renderQuestion(); }
+      document.getElementById('question-title').textContent = t(step.title) || step.title;
+      document.getElementById('step-number').textContent = currentStep + 1;
+      document.getElementById('step-progress').textContent = currentStep + 1;
+      document.getElementById('progress-bar').style.width = (((currentStep + 1) / STEPS.length) * 100) + '%';
+      const content = document.getElementById('question-content');
+      content.innerHTML = '';
+
+      if(step.isCustomInput){
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'w-full h-12 rounded-2xl border-2 border-gray-200 focus:border-sky-500 transition-colors px-4';
+        const phMap = { customStartLocation: 'placeholder.customStartLocation', whatToDo: 'placeholder.whatToDo', customSpot: 'placeholder.customSpot' };
+        const phKey = phMap[step.key] || '';
+        input.placeholder = phKey ? t(phKey) : '';
+        input.value = diagnosisData[step.key] || '';
+        input.oninput = (e) => { diagnosisData[step.key] = e.target.value; updateNextButton(); };
+        content.appendChild(input);
+        const p = document.createElement('p'); p.className = 'text-xs text-gray-500 text-center mt-4'; p.textContent = step.isOptional ? '（任意項目）空欄でも提案します' : '自由に入力してください'; content.appendChild(p);
+      } else if(step.isTimeInput){
+        const input = document.createElement('input');
+        input.type = 'time';
+        input.className = 'w-full h-12 rounded-2xl border-2 border-gray-200 focus:border-sky-500 transition-colors text-center text-lg';
+        input.value = diagnosisData[step.key] || '';
+        input.onchange = (e)=>{ diagnosisData[step.key] = e.target.value; updateNextButton(); };
+        content.appendChild(input);
+      } else {
+        const group = document.createElement('div'); group.className = 'space-y-3';
+        step.options.forEach(opt=>{
+          const label = document.createElement('label');
+          label.className = 'option-label flex items-center space-x-4 p-4 rounded-2xl border-2 border-gray-200 hover:border-sky-300 hover:bg-sky-50 cursor-pointer transition-all duration-200';
+          const radio = document.createElement('input'); radio.type = 'radio'; radio.name = step.key; radio.value = opt.value; radio.className = 'sr-only';
+          if(diagnosisData[step.key] === opt.value) radio.checked = true;
+          radio.onchange = ()=>{ diagnosisData[step.key] = opt.value; updateNextButton(); markActiveLabel(radio); };
+          const inner = document.createElement('div'); inner.className = 'option-inner flex-1';
+          inner.innerHTML = `<div class="flex justify-between items-center"><div class="text-sm font-medium">${t(opt.label)}</div><div class="text-xs text-gray-500"> </div></div>`;
+          label.appendChild(radio); label.appendChild(inner); group.appendChild(label);
+          label.addEventListener('click',()=>{ radio.checked = true; radio.dispatchEvent(new Event('change')); });
         });
+        content.appendChild(group);
+      }
 
-        // Initial apply
-        applyI18n();
-    </script>
+      document.getElementById('back-btn').classList.toggle('hidden', currentStep === 0);
+      updateNextButton();
+      applyI18n();
+    }
+
+    function markActiveLabel(radio){
+      document.querySelectorAll(`label.option-label`).forEach(lbl=>lbl.classList.remove('active'));
+      const lbl = radio.closest('label.option-label');
+      if(lbl) lbl.classList.add('active');
+    }
+
+    function updateNextButton(){
+      const step = STEPS[currentStep];
+      const next = document.getElementById('next-btn');
+      if(!next) return;
+      let enabled = false;
+      if(step.isCustomInput){
+        if(step.isOptional) enabled = true;
+        else enabled = !!(diagnosisData[step.key] && diagnosisData[step.key].trim().length>0);
+      } else if(step.isTimeInput){
+        enabled = !!diagnosisData[step.key];
+      } else {
+        enabled = !!diagnosisData[step.key];
+      }
+      next.disabled = !enabled;
+      next.classList.toggle('opacity-50', !enabled);
+      next.textContent = currentStep === STEPS.length - 1 ? t('diagnosis.view_result') : t('common.next');
+    }
+
+    function nextStep(){
+      const step = STEPS[currentStep];
+      if(!step) return;
+      const isOptional = step.isOptional;
+      if(!isOptional && !diagnosisData[step.key] && !step.isTimeInput && !step.isCustomInput) return;
+      if(currentStep >= STEPS.length - 1){
+        showScreen('loading');
+        setTimeout(()=>{ showResults(); }, 900);
+        return;
+      }
+      currentStep++;
+      renderQuestion();
+    }
+
+    function previousStep(){ if(currentStep <= 0) return; currentStep--; renderQuestion(); }
+
+    /* ===========================
+       Check-in state & lottery
+       - uses localStorage to persist checked spots (per-plan)
+       - distance threshold: 300m
+       - lottery enabled when >= 80% spots checked (non-move items)
+       =========================== */
+    const CHECKIN_KEY = 'demo_checkins_v1';
+    const CHECKIN_THRESHOLD_M = 300; // 300 meters
+    const LOTTERY_RATE = 0.8;
+
+    function loadCheckins(){
+      try{ const raw = localStorage.getItem(CHECKIN_KEY); return raw ? JSON.parse(raw) : {}; } catch(e){ return {}; }
+    }
+    function saveCheckins(obj){ try{ localStorage.setItem(CHECKIN_KEY, JSON.stringify(obj)); }catch(e){} }
+
+    function markSpotAsChecked(spotId){
+      const cs = loadCheckins();
+      cs[spotId] = true;
+      saveCheckins(cs);
+      updateCheckinUI();
+    }
+    function isChecked(spotId){
+      const cs = loadCheckins();
+      return !!cs[spotId];
+    }
+    function resetCheckins(){
+      saveCheckins({});
+      updateCheckinUI();
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2){
+      // Haversine in meters
+      const R = 6371000;
+      const toRad = v => v * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function tryCheckIn(spot){
+      if(!navigator.geolocation) return alert(t('geo.unavailable') || '位置情報が利用できません');
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        const dist = getDistance(lat, lon, spot.lat, spot.lng);
+        if(dist <= CHECKIN_THRESHOLD_M){
+          markSpotAsChecked(spot.id);
+          alert(t('checkin.success') || 'チェックイン成功！🎉');
+        } else {
+          alert((t('checkin.too_far') || 'もう少し近づいてください。') + ` (${Math.round(dist)}m)`);
+        }
+      }, err=>{
+        alert(t('geo.denied') || '位置情報の取得に失敗しました。許可を確認してください。');
+      }, { enableHighAccuracy:true, timeout:8000, maximumAge:60000 });
+    }
+
+    /* ===========================
+       Render Results (spots + move distinction)
+       - fully multilingual using SPOT_I18N
+       =========================== */
+    function showResults(){
+      showScreen('results');
+      // travel style text example
+      const travelTextMap = {
+        relaxed: {'ja':'ゆったりと楽しむコース','en':'Relaxed course','zh':'Relaxed course','ko':'여유롭게 즐기는 코스'},
+        active: {'ja':'アクティブに回るコース','en':'Active course','zh':'Active course','ko':'활동적으로 도는 코스'},
+        cultural: {'ja':'文化・歴史重視のコース','en':'Cultural & history course','zh':'Cultural & history course','ko':'문화·역사 중심 코스'},
+        gourmet: {'ja':'グルメを楽しむコース','en':'Gourmet-focused course','zh':'Gourmet-focused course','ko':'미식 중심 코스'}
+      };
+      const travelText = (diagnosisData.travelStyle && travelTextMap[diagnosisData.travelStyle]) ? (travelTextMap[diagnosisData.travelStyle][currentLang] || travelTextMap[diagnosisData.travelStyle]['ja']) : (currentLang==='en'?'Recommended course':'ゆったりと楽しむコース');
+      const travelEl = document.getElementById('travel-style-text'); if(travelEl) travelEl.textContent = travelText;
+
+      const spotsList = document.getElementById('spots-list'); spotsList.innerHTML = '';
+      DEMO_PLAN.forEach((p, idx)=>{
+        const item = document.createElement('div'); item.className = 'timeline-item';
+        const dot = document.createElement('div'); dot.className = 'timeline-dot'; item.appendChild(dot);
+
+        const isMove = (p.tags && p.tags.some(tag => ['移動','徒歩','江ノ電','移動','歩行'].includes(tag))) || /移動|徒歩|→/.test(p.description || '') || /→/.test(p.name || '');
+        if(isMove){
+          const move = document.createElement('div'); move.className = 'move-card';
+          const icon = document.createElement('div'); icon.className = 'move-icon'; icon.innerHTML = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>';
+          const content = document.createElement('div'); content.style.flex = '1';
+          const titleRow = document.createElement('div'); titleRow.className = 'flex justify-between items-center';
+          const titleLeft = document.createElement('div'); titleLeft.className = 'font-semibold'; titleLeft.textContent = SPOT_I18N[p.id] && SPOT_I18N[p.id].name ? (SPOT_I18N[p.id].name[currentLang] || p.name) : p.name;
+          const timeBadge = document.createElement('div'); timeBadge.className = 'time-badge'; timeBadge.textContent = p.startTime || '';
+          titleRow.appendChild(titleLeft); titleRow.appendChild(timeBadge);
+          const desc = document.createElement('div'); desc.className = 'text-sm text-gray-600 mt-1'; desc.textContent = SPOT_I18N[p.id] && SPOT_I18N[p.id].description ? (SPOT_I18N[p.id].description[currentLang] || p.description) : p.description;
+          content.appendChild(titleRow); content.appendChild(desc);
+          move.appendChild(icon); move.appendChild(content);
+          item.appendChild(move);
+        } else {
+          const spot = document.createElement('div'); spot.className = 'spot-card';
+          const titleRow = document.createElement('div'); titleRow.className = 'flex justify-between items-start';
+          const left = document.createElement('div');
+          const nameEl = document.createElement('div'); nameEl.className = 'spot-title';
+          nameEl.textContent = SPOT_I18N[p.id] && SPOT_I18N[p.id].name ? (SPOT_I18N[p.id].name[currentLang] || p.name) : p.name;
+          const descEl = document.createElement('div'); descEl.className = 'spot-desc';
+          descEl.textContent = SPOT_I18N[p.id] && SPOT_I18N[p.id].description ? (SPOT_I18N[p.id].description[currentLang] || p.description) : p.description;
+          left.appendChild(nameEl); left.appendChild(descEl);
+          const timeBadge = document.createElement('div'); timeBadge.className = 'time-badge'; timeBadge.textContent = p.startTime || '';
+          titleRow.appendChild(left); titleRow.appendChild(timeBadge);
+          spot.appendChild(titleRow);
+
+          // tips (multilingual)
+          const tipsArr = SPOT_I18N[p.id] && SPOT_I18N[p.id].tips && SPOT_I18N[p.id].tips[currentLang] ? SPOT_I18N[p.id].tips[currentLang] : p.tips;
+          if(tipsArr && tipsArr.length){
+            const tipsEl = document.createElement('div'); tipsEl.className = 'spot-tips';
+            tipsEl.innerHTML = tipsArr.map(t => `<div>${escapeHtml(t)}</div>`).join('');
+            spot.appendChild(tipsEl);
+          }
+
+          // check-in controls
+          const ckWrap = document.createElement('div'); ckWrap.className = 'mt-2 flex items-center gap-3';
+          const checkBtn = document.createElement('button'); checkBtn.className = 'checkin-btn'; checkBtn.textContent = (currentLang==='ja'?'チェックイン': currentLang==='en'?'Check in': currentLang==='zh'?'签到':'체크인');
+          checkBtn.onclick = ()=>{ tryCheckIn(p); };
+          ckWrap.appendChild(checkBtn);
+
+          // checked badge display
+          const checkedSpan = document.createElement('div'); checkedSpan.className = 'checked-badge'; checkedSpan.style.display = isChecked(p.id)?'inline-block':'none';
+          checkedSpan.textContent = (currentLang==='ja'?'チェック済':'Checked');
+          ckWrap.appendChild(checkedSpan);
+
+          spot.appendChild(ckWrap);
+          item.appendChild(spot);
+        }
+        spotsList.appendChild(item);
+      });
+
+      updateCheckinUI();
+      renderCoupons();
+    }
+
+    function updateCheckinUI(){
+      // update checked badges and checkin rate
+      const cs = loadCheckins();
+      const spotIds = DEMO_PLAN.filter(p => !(p.tags && p.tags.includes('移動'))).map(p=>p.id);
+      const totalSpots = spotIds.length;
+      const checkedCount = spotIds.reduce((acc,id)=> acc + (cs[id]?1:0), 0);
+      const rate = totalSpots ? Math.round((checkedCount/totalSpots)*100) : 0;
+      document.getElementById('checkin-rate').textContent = rate + '%';
+      // show/hide checked badges in UI
+      document.querySelectorAll('.timeline-item').forEach(item=>{
+        const title = item.querySelector('.spot-title');
+        if(!title) return;
+        const spotName = title.textContent;
+        // find id by matching translated name (best-effort)
+        const spot = DEMO_PLAN.find(p => {
+          const nm = (SPOT_I18N[p.id] && SPOT_I18N[p.id].name && SPOT_I18N[p.id].name[currentLang]) ? SPOT_I18N[p.id].name[currentLang] : p.name;
+          return nm === spotName;
+        });
+        if(!spot) return;
+        const badge = item.querySelector('.checked-badge');
+        if(badge) badge.style.display = cs[spot.id] ? 'inline-block' : 'none';
+      });
+      // lottery enable if rate >= LOTTERY_RATE*100
+      const lotteryBtn = document.getElementById('lottery-btn');
+      if(lotteryBtn) lotteryBtn.disabled = (checkedCount/totalSpots) < LOTTERY_RATE;
+    }
+
+    function enterLottery(){
+      // demo lottery: random pick if eligible
+      const cs = loadCheckins();
+      const spotIds = DEMO_PLAN.filter(p => !(p.tags && p.tags.includes('移動'))).map(p=>p.id);
+      const totalSpots = spotIds.length;
+      const checkedCount = spotIds.reduce((acc,id)=> acc + (cs[id]?1:0), 0);
+      if(checkedCount/totalSpots < LOTTERY_RATE){ alert((currentLang==='ja'?'抽選に参加する条件を満たしていません':'Not eligible for lottery yet')); return; }
+      // simple "you won" 10% chance
+      const won = Math.random() < 0.1;
+      if(won) alert((currentLang==='ja'?'おめでとうございます！抽選に当選しました🎉':'Congratulations! You won the lottery!'));
+      else alert((currentLang==='ja'?'残念ながら今回はハズレです。':'Sorry, not a winner this time.'));
+    }
+
+    /* ---------- Map ---------- */
+    function initMap(){
+      if(mapReady) return;
+      const mapDiv = document.getElementById('map'); if(!mapDiv) return;
+      mapInstance = L.map('map', { zoomControl:true }).setView([35.32,139.48],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(mapInstance);
+      const latlngs = [];
+      DEMO_PLAN.forEach(p=>{ if(p.lat && p.lng){ L.marker([p.lat,p.lng]).addTo(mapInstance).bindPopup(`<strong>${escapeHtml((SPOT_I18N[p.id] && SPOT_I18N[p.id].name && SPOT_I18N[p.id].name[currentLang])?SPOT_I18N[p.id].name[currentLang]:p.name)}</strong><br>${escapeHtml(p.description)}`); latlngs.push([p.lat,p.lng]); } });
+      if(latlngs.length) mapInstance.fitBounds(latlngs,{ padding:[40,40] });
+      mapReady = true;
+    }
+
+    /* ---------- Coupons rendering ---------- */
+    function renderCoupons(){
+      const list = document.getElementById('coupon-list'); if(!list) return;
+      list.innerHTML = '';
+      DEMO_COUPONS.forEach(c=>{
+        const title = c.title[currentLang] || c.title['ja'];
+        const desc = c.description[currentLang] || c.description['ja'];
+        const item = document.createElement('div'); item.className = 'bg-white rounded-2xl p-4 flex items-start gap-3 glass';
+        item.innerHTML = `<div class="flex-1"><div class="font-semibold text-gray-800">${escapeHtml(title)}</div><div class="text-xs text-gray-500 mt-1">${escapeHtml(desc)}</div><div class="text-xs text-gray-400 mt-2">有効期限: ${escapeHtml(c.validUntil)}</div></div><div class="flex flex-col gap-2"><button class="w-24 h-10 rounded-xl bg-[color:var(--sea-mid)] text-white" onclick="viewCoupon('${c.id}')">詳細</button>${c.used?'<div class="text-xs text-gray-400">使用済み</div>':''}</div>`;
+        list.appendChild(item);
+      });
+    }
+
+    function viewCoupon(id){
+      const c = DEMO_COUPONS.find(x=>x.id===id); if(!c) return;
+      document.getElementById('cd-title').textContent = c.title[currentLang] || c.title['ja'];
+      document.getElementById('cd-spot').textContent = c.spotName || '';
+      document.getElementById('cd-desc').textContent = c.description[currentLang] || c.description['ja'];
+      document.getElementById('cd-discount').textContent = c.discount;
+      document.getElementById('cd-valid').textContent = (currentLang==='ja'?'有効期限: ':'Valid until: ') + c.validUntil;
+      document.getElementById('cd-status').textContent = c.used ? (currentLang==='ja'?'使用済み':'Used') : '';
+      const useBtn = document.getElementById('cd-use');
+      useBtn.onclick = ()=>{ if(c.used){ alert(currentLang==='ja'?'既に使用済みです':'Already used'); return; } if(confirm(currentLang==='ja'?t('coupon.confirm'):t('coupon.confirm'))){ c.used=true; document.getElementById('cd-status').textContent = currentLang==='ja'?'使用済み':'Used'; renderCoupons(); showScreen('coupons'); } };
+      showScreen('coupon-detail');
+    }
+
+    /* ---------- Geo message keys for i18n (fallbacks) ---------- */
+    TEXTS.ja['geo.unavailable'] = '位置情報が利用できません';
+    TEXTS.en['geo.unavailable'] = 'Geolocation is not available';
+    TEXTS.ja['geo.denied'] = '位置情報の取得に失敗しました。許可を確認してください。';
+    TEXTS.en['geo.denied'] = 'Failed to get location. Check permissions.';
+    TEXTS.ja['checkin.success'] = 'チェックイン成功！🎉';
+    TEXTS.en['checkin.success'] = 'Check-in successful!';
+    TEXTS.ja['checkin.too_far'] = 'もう少し近づいてください。';
+    TEXTS.en['checkin.too_far'] = 'Please get closer to the spot.';
+
+    /* ---------- Language change handler ---------- */
+    document.getElementById('lang-select').addEventListener('change', (e)=>{
+      currentLang = e.target.value;
+      applyI18n();
+      renderQuestion(); // update question text
+      // If results visible, re-render to update SPOT translations and labels
+      if(!document.getElementById('results-screen').classList.contains('hidden')) showResults();
+      if(mapReady) { /* reposition popups to localized names if necessary */ }
+    });
+
+    /* ---------- Initial rendering and helpers ---------- */
+    applyI18n();
+    showScreen('intro');
+
+    // Expose some functions in console for testing
+    window.showResults = showResults;
+    window.resetCheckins = resetCheckins;
+  </script>
 </body>
 </html>
-
-
