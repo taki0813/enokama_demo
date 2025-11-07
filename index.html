@@ -997,7 +997,7 @@
   // Geolocation API が使えない環境ではモックチェックイン
         if (!navigator.geolocation) {
             markSpotAsChecked(spot.id);
-            alert('チェックイン成功（モック）🎉');
+            alert('チェックイン成功（デモ）🎉');
             return;
         }
 
@@ -1013,9 +1013,9 @@
         }, err => {
             // 拒否・エラー時のモックフォールバック
             if (err && err.code === 1) {
-            if (confirm('位置情報が許可されていません。モックチェックインを行いますか？')) {
+            if (confirm('位置情報が許可されていません。デモチェックインを行いますか？')) {
                 markSpotAsChecked(spot.id);
-                alert('チェックイン成功（モック）🎉');
+                alert('チェックイン成功（デモ）🎉');
             }
             } else {
             alert('位置情報の取得に失敗しました。');
