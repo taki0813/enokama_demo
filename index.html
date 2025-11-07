@@ -979,7 +979,7 @@
       return R * c;
     }
 
-    function tryCheckIn(spot){
+    /*function tryCheckIn(spot){
         if(!navigator.geolocation) return alert(t('geo.unavailable') || '位置情報が利用できません');
         navigator.geolocation.getCurrentPosition(pos=>{
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
@@ -992,8 +992,8 @@
         }
       }, err=>{
         alert(t('geo.denied') || '位置情報の取得に失敗しました。許可を確認してください。');
-      }, { enableHighAccuracy:true, timeout:8000, maximumAge:60000 });
-      /*function tryCheckIn(spot) {
+      }, { enableHighAccuracy:true, timeout:8000, maximumAge:60000 });*/
+      function tryCheckIn(spot) {
   // Geolocation API が使えない環境ではモックチェックイン
         if (!navigator.geolocation) {
             markSpotAsChecked(spot.id);
@@ -1021,7 +1021,6 @@
             alert('位置情報の取得に失敗しました。');
             }
         }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
-        }*/
     }
 
     /* ===========================
