@@ -39,41 +39,62 @@
     height: 34vh;
     overflow: hidden;
     z-index: 0;
-    pointer-events: none; /* ✅ 背景のクリック遮断を防ぐ */
-    }
-
-    .ocean-svg {
+    pointer-events: none;
+  }
+  
+  /* 波の基本設定 */
+  .ocean-svg {
     position: absolute;
     left: -15%;
     width: 130%;
     bottom: -6vh;
-    transform-origin: center;
     opacity: 0.9;
-    animation: waveFlow 16s ease-in-out infinite;
+    transform-origin: center;
+    animation: waveFlow 8s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
     will-change: transform;
-    }
-
-    .ocean-svg:nth-child(2) {
-    animation-duration: 22s;
-    animation-delay: -3s;
+  }
+  
+  /* 中間層（やや遅く） */
+  .ocean-svg.layer2 {
+    animation: waveFlow2 10s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
     opacity: 0.7;
-    filter: blur(4px);
-    }
-
-    .ocean-svg:nth-child(3) {
-    animation-duration: 28s;
-    animation-delay: -6s;
+    filter: blur(3px);
+  }
+  
+  /* 奥の層（さらに遅く＆ぼかす） */
+  .ocean-svg.layer3 {
+    animation: waveFlow3 14s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
     opacity: 0.5;
-    filter: blur(8px);
-    }
-
-    @keyframes waveFlow {
+    filter: blur(6px);
+  }
+  
+  /* 🌊 手前の波：速く・強く動く */
+  @keyframes waveFlow {
     0%   { transform: translateX(0%) translateY(0%) scale(1); }
-    25%  { transform: translateX(-2%) translateY(-1.5%) scale(1.01); }
-    50%  { transform: translateX(-4%) translateY(0.5%) scale(1.00); }
-    75%  { transform: translateX(-2%) translateY(1.2%) scale(0.995); }
+    20%  { transform: translateX(-4%) translateY(-2%) scale(1.03) rotate(0.2deg); }
+    40%  { transform: translateX(-8%) translateY(3%) scale(1.00) rotate(-0.2deg); }
+    60%  { transform: translateX(-10%) translateY(-1%) scale(1.02) rotate(0.1deg); }
+    80%  { transform: translateX(-6%) translateY(2%) scale(0.98) rotate(-0.1deg); }
     100% { transform: translateX(0%) translateY(0%) scale(1); }
-    }
+  }
+  
+  /* 🌊 中間の波：ゆっくり＆少し揺れる */
+  @keyframes waveFlow2 {
+    0%   { transform: translateX(0%) translateY(0%) scale(1); }
+    25%  { transform: translateX(-2%) translateY(-1%) scale(1.02) rotate(0.1deg); }
+    50%  { transform: translateX(-5%) translateY(1%) scale(1.00) rotate(-0.1deg); }
+    75%  { transform: translateX(-3%) translateY(0.5%) scale(0.99) rotate(0.05deg); }
+    100% { transform: translateX(0%) translateY(0%) scale(1); }
+  }
+  
+  /* 🌊 奥の波：最もゆっくりでやわらかい */
+  @keyframes waveFlow3 {
+    0%   { transform: translateX(0%) translateY(0%) scale(1); }
+    25%  { transform: translateX(-1%) translateY(-0.5%) scale(1.01); }
+    50%  { transform: translateX(-3%) translateY(0.8%) scale(0.995); }
+    75%  { transform: translateX(-2%) translateY(0.3%) scale(1.00); }
+    100% { transform: translateX(0%) translateY(0%) scale(1); }
+  }
     /* glass surfaces */
     .glass{ background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.46)); border:1px solid var(--glass-border); backdrop-filter: blur(10px) saturate(110%); box-shadow: 0 10px 40px rgba(2,6,23,0.06); border-radius:16px;}
     .glass-strong{ background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6)); border:1px solid rgba(255,255,255,0.7); backdrop-filter: blur(16px) saturate(120%); box-shadow:0 12px 44px rgba(2,6,23,0.06); border-radius:18px;}
