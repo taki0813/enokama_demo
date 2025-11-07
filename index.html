@@ -527,180 +527,265 @@
        and SPOT translations for all spots
        =============== */
     const DEMO_PLAN = [
-      { id: "start-kamakura", name: "JR・江ノ電 鎌倉駅", description: "旅のスタート", duration: 0, entrance_fee: 0, tags: ["スタート"], tips: [], startTime: "10:00", endTime: "10:10", order: 1, lat: 35.3187, lng: 139.5503 },
-      { id: "tsurugaoka", name: "鶴岡八幡宮", description: "【有名】 参拝", duration: 60, entrance_fee: 0, tags: ["神社","参拝"], tips: ["参道の真ん中は神様の通り道。手水舎で身を清め、『二礼二拍手一礼』で参拝。境内での食事・休憩は禁止。"], startTime: "10:10", endTime: "11:10", order: 2, lat: 35.3259, lng: 139.5565 },
-      { id: "komachidori", name: "小町通り", description: "散策", duration: 30, entrance_fee: 0, tags: ["散策","商店街"], tips: ["食べ歩きは自粛推奨。購入品は店舗の指定場所でいただきましょう。"], startTime: "11:10", endTime: "11:40", order: 3, lat: 35.3215, lng: 139.5555 },
-      { id: "to-wadazuka", name: "鎌倉駅 → 和田塚駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "11:40", endTime: "11:50", order: 4, lat: 35.3136, lng: 139.5397 },
-      { id: "wadazuka", name: "和田塚", description: "【マイナー】 史跡見学", duration: 20, entrance_fee: 0, tags: ["史跡"], tips: ["静かな住宅街。大声を出さず、史跡や柵に腰掛けない。"], startTime: "11:50", endTime: "12:10", order: 5, lat: 35.3136, lng: 139.5397 },
-      { id: "hoshinoi", name: "星の井 (ほしのい)", description: "【ピンポイント店】 昼食（そば）", duration: 60, entrance_fee: 0, tags: ["昼食","そば"], tips: ["観光客が少ない場所でゆっくり昼食に最適。長時間の通話は控えめに。"], startTime: "12:10", endTime: "13:10", order: 6, lat: 35.3130, lng: 139.5405 },
-      { id: "to-hase", name: "和田塚駅 → 長谷駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "13:10", endTime: "13:20", order: 7, lat: 35.3127, lng: 139.5360 },
-      { id: "mushinan", name: "無心庵", description: "【ピンポイント店】 休憩・甘味", duration: 60, entrance_fee: 0, tags: ["甘味","休憩"], tips: ["店内や線路付近の撮影は他のお客様と電車の安全に配慮。"], startTime: "13:20", endTime: "14:20", order: 8, lat: 35.3124, lng: 139.5364 },
-      { id: "kotokuin", name: "鎌倉大仏殿 高徳院", description: "【有名】 拝観", duration: 60, entrance_fee: 300, tags: ["寺院","大仏"], tips: ["寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。"], startTime: "14:20", endTime: "15:20", order: 9, lat: 35.3167, lng: 139.5353 },
-      { id: "goryo", name: "御霊神社（ごりょうじんじゃ）", description: "【マイナー】 参拝・江ノ電撮影", duration: 40, entrance_fee: 0, tags: ["神社","撮影"], tips: ["線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。"], startTime: "15:20", endTime: "16:00", order: 10, lat: 35.3139, lng: 139.5358 },
-      { id: "to-inamura", name: "長谷駅 → 稲村ヶ崎駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:00", endTime: "16:10", order: 11, lat: 35.3094, lng: 139.5220 },
-      { id: "inamuragasaki", name: "稲村ヶ崎公園", description: "【マイナービュー】 散策・写真撮影", duration: 40, entrance_fee: 0, tags: ["公園","写真"], tips: ["夕景が特に美しい。ゴミは必ず持ち帰る。"], startTime: "16:10", endTime: "16:50", order: 12, lat: 35.3094, lng: 139.5220 },
-      { id: "to-enoshima-st", name: "稲村ヶ崎駅 → 江ノ島駅", description: "江ノ電で移動", duration: 15, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:50", endTime: "17:05", order: 13, lat: 35.3058, lng: 139.4816 },
-      { id: "walk-enoshima", name: "江ノ島へ移動", description: "徒歩", duration: 30, entrance_fee: 0, tags: ["徒歩","移動"], tips: [], startTime: "17:05", endTime: "17:35", order: 14, lat: 35.3005, lng: 139.4802 },
-      { id: "sea-candle", name: "サムエル・コッキング苑 / シーキャンドル", description: "【有名】 展望・夕景", duration: 60, entrance_fee: 700, tags: ["展望","夕景"], tips: ["イベント期間は21:00まで延長あり。エスカー利用で体力温存。"], startTime: "17:35", endTime: "18:35", order: 15, lat: 35.2986, lng: 139.4799 },
-      { id: "iwaya", name: "江ノ島岩屋", description: "【マイナー】 洞窟体験", duration: 50, entrance_fee: 500, tags: ["洞窟"], tips: ["夏期は18:00最終入場の場合あり。足元に注意。"], startTime: "18:35", endTime: "19:25", order: 16, lat: 35.2906, lng: 139.4780 },
-      { id: "il-chianti", name: "イル・キャンティ", description: "【ピンポイント店】 夕食（イタリアン）", duration: 70, entrance_fee: 0, tags: ["夕食","イタリアン"], tips: ["人気店のため予約推奨。同エリア内で移動効率良。"], startTime: "19:25", endTime: "20:35", order: 17, lat: 35.3001, lng: 139.4793 },
-      { id: "goal-enoshima", name: "江ノ島駅", description: "ゴール", duration: 0, entrance_fee: 0, tags: ["ゴール"], tips: ["帰路へ。お疲れ様でした！"], startTime: "20:35", endTime: "20:35", order: 18, lat: 35.3058, lng: 139.4816 }
-    ];
+      { id: "start-kamakura", name: "JR・江ノ電 鎌倉駅", description: "旅のスタート", duration: 0, entrance_fee: 0, tags: ["スタート"], tips: [], startTime: "10:00", endTime: "10:10", order: 1, lat: 35.3185, lng: 139.550083 },
+      { id: "tsurugaoka", name: "鶴岡八幡宮", description: "【有名】 参拝", duration: 60, entrance_fee: 0, tags: ["神社","参拝"], tips: ["参道の真ん中は神様の通り道です。端を歩くように心がけましょう。まずは、手水舎で手を清め、『二礼二拍手一礼』で参拝。境内での食事・休憩は禁止。写真撮影も注意⚠️"], startTime: "10:10", endTime: "11:10", order: 2, lat: 35.325013, lng: 139.55611 },
+      { id: "komachidori", name: "小町通り", description: "散策", duration: 30, entrance_fee: 0, tags: ["散策","商店街"], tips: ["食べ歩きは自粛推奨。購入品は店舗の指定場所でいただきましょう。"], startTime: "11:10", endTime: "11:40", order: 3, lat: 35.319633, lng: 139.551386 },
+      { id: "to-wadazuka", name: "鎌倉駅 → 和田塚駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "11:40", endTime: "11:50", order: 4, lat: 35.3136895, lng: 139.5453762 },
+      { id: "yoridokoro", name: "ヨリドコロ 由比ガ浜大通り店", description: "昼食（焼き魚定食）", duration: 60, entrance_fee: 0, tags: ["昼食","焼き魚"], tips: ["ふわふわの焼き魚やこだわり卵を使用した卵かけご飯が美味しいお店です。店内でのお電話はお控えください。"], startTime: "11:50", endTime: "12:50", order: 6, lat: 35.315174, lng: 139.545369 },
+      { id: "wadazuka", name: "和田塚", description: "【マイナー】 史跡見学", duration: 20, entrance_fee: 0, tags: ["史跡"], tips: ["静かな住宅街の中にある史跡です。大声を出さず、史跡や柵に腰掛けないでください。"], startTime: "12:50", endTime: "13:10", order: 5, lat: 35.3136895, lng: 139.5453762 },
+      { id: "mushinan", name: "無心庵", description: "休憩・甘味", duration: 40, entrance_fee: 0, tags: ["甘味","休憩"], tips: ["美味しいあんみつなど和菓子が食べられます。また、江ノ電の線路に面した店舗のため、電車を眺めながら休憩ができます。店内や線路付近の撮影は他のお客様と電車の安全に配慮。"], startTime: "13:20", endTime: "14:00", order: 8, lat: 35.313696, lng: 139.544945 },
+      { id: "to-hase", name: "和田塚駅 → 長谷駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "14:00", endTime: "14:10", order: 7, lat: 35.3112355, lng: 139.5361391 },
+      { id: "kotokuin", name: "鎌倉大仏殿 高徳院", description: "【有名】 拝観", duration: 60, entrance_fee: 300, tags: ["寺院","大仏"], tips: ["寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。"], startTime: "14:10", endTime: "15:10", order: 9, lat: 35.3168463, lng: 139.5357335 },
+      { id: "goryo", name: "御霊神社（ごりょうじんじゃ）", description: "【マイナー】 参拝・江ノ電撮影", duration: 40, entrance_fee: 0, tags: ["神社","撮影"], tips: ["線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。"], startTime: "15:10", endTime: "15:50", order: 10, lat: 35.311136, lng: 139.532743 },
+      { id: "to-inamura", name: "長谷駅 → 稲村ヶ崎駅", description: "江ノ電で移動", duration: 10, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "15:50", endTime: "16:00", order: 11, lat: 35.304295, lng: 139.522196 },
+      { id: "inamuragasaki", name: "稲村ヶ崎公園", description: "【マイナービュー】 散策・写真撮影", duration: 40, entrance_fee: 0, tags: ["公園","写真"], tips: ["海と江ノ島を同時に見ることができます。夕日も綺麗です。ゴミは必ず持ち帰る。"], startTime: "16:00", endTime: "16:40", order: 12, lat: 35.302352, lng: 139.525429 },
+      { id: "to-enoshima-st", name: "稲村ヶ崎駅 → 江ノ島駅", description: "江ノ電で移動", duration: 15, entrance_fee: 0, tags: ["移動","江ノ電"], tips: [], startTime: "16:40", endTime: "16:55", order: 13, lat: 35.310972, lng: 139.48750 },
+      { id: "walk-enoshima", name: "江ノ島へ移動", description: "徒歩", duration: 60, entrance_fee: 0, tags: ["徒歩","移動"], tips: [], startTime: "16:55", endTime: "17:55", order: 14, lat: 35.3088, lng: 139.4840 },
+      { id: "iwaya", name: "江ノ島岩屋", description: "【マイナー】 洞窟体験", duration: 30, entrance_fee: 500, tags: ["洞窟"], tips: ["夏期は18:00最終入場の場合あり。足元に注意してください。"], startTime: "17:55", endTime: "18:25", order: 16, lat: 35.29846, lng: 139.475944 },
+      { id: "walk-enoshima_2", name: "江ノ島頂上へ", description: "徒歩", duration: 30, entrance_fee: 0, tags: ["徒歩","移動"], tips: [], startTime: "18:25", endTime: "18:55", order: 15, lat: 35.29972, lng: 139.47833 },
+      { id: "sea-candle", name: "サムエル・コッキング苑 / シーキャンドル", description: "【有名】 展望・夕景", duration: 60, entrance_fee: 700, tags: ["展望","夕景"], tips: ["イベント期間は21:00まで延長あり。綺麗にライトアップされたタワーや庭園が広がっています。"], startTime: "18:55", endTime: "19:55", order: 15, lat: 35.29972, lng: 139.47833 },
+      { id: "il-chianti", name: "イル・キャンティ", description: "【ピンポイント店】 夕食（イタリアン）", duration: 70, entrance_fee: 0, tags: ["夕食","イタリアン"], tips: ["人気店のため少し待つかも。江ノ島駅の近くなのでアクセスも抜群。"], startTime: "20:00", endTime: "21:10", order: 17, lat: 35.308433, lng: 139.481204 },
+      { id: "goal-enoshima", name: "江ノ島駅", description: "ゴール", duration: 0, entrance_fee: 0, tags: ["ゴール"], tips: ["帰路へ。お疲れ様でした！鎌倉・江ノ島観光は楽しめましたか？"], startTime: "21:10", endTime: "21:10", order: 18, lat: 35.310972, lng: 139.48750 }
+      ];
 
     // SPOT translations (complete mapping for these DEMO_PLAN IDs)
     const SPOT_I18N = {
       'start-kamakura': {
-        name: { ja:'JR・江ノ電 鎌倉駅', en:'JR / Enoden Kamakura Station', zh:'JR / 江之电 镰仓站', ko:'JR・에노덴 가마쿠라역' },
-        description: { ja:'旅のスタート', en:'Start of the trip', zh:'旅程开始', ko:'여행 시작' },
-        tips: { ja:[], en:[], zh:[], ko:[] }
+          name: { ja:'JR・江ノ電 鎌倉駅', en:'JR / Enoden Kamakura Station', zh:'JR / 江之电 镰仓站', ko:'JR・에노덴 가마쿠라역' },
+          description: { ja:'旅のスタート', en:'Start of the trip', zh:'旅程开始', ko:'여행 시작' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
       'tsurugaoka': {
-        name: { ja:'鶴岡八幡宮', en:'Tsurugaoka Hachimangu Shrine', zh:'鹤冈八幡宫', ko:'쓰루오카 하치만구' },
-        description: { ja:'【有名】 参拝', en:'[Famous] Shrine visit', zh:'【有名】 参拜', ko:'【유명】 참배' },
-        tips: {
-          ja:['参道の真ん中は神様の通り道。手水舎で清め、「二礼二拍手一礼」で参拝。境内での飲食は不可。'],
-          en:['Do not walk in the center of the approach. Purify at the water basin; bow twice, clap twice, bow once. No eating/resting inside the grounds.'],
-          zh:['参道中央为神道，请在手水舍净手；“二拜二拍手一拜”。境内禁止饮食休憩。'],
-          ko:['참도 중앙은 신의 길입니다. 손을 씻고 “두 번 인사, 두 번 박수, 한 번 인사”로 참배하세요. 경내에서의 음식 섭취 금지.']
-        }
+          name: { ja:'鶴岡八幡宮', en:'Tsurugaoka Hachimangu Shrine', zh:'鹤冈八幡宫', ko:'쓰루오카 하치만구' },
+          description: { ja:'【有名】 参拝', en:'[Famous] Shrine visit', zh:'【有名】 参拜', ko:'【유명】 참배' },
+          tips: {
+          ja:['参道の真ん中は神様の通り道です。端を歩くように心がけましょう。まずは、手水舎で手を清め、「二礼二拍手一礼」で参拝。境内での食事・休憩は禁止。写真撮影も注意⚠️'],
+          en:['The center of the approach path is for the gods. Walk along the sides. Purify your hands at the water basin, then perform “two bows, two claps, one bow.” Eating or resting inside is prohibited. Be careful when taking photos.'],
+          zh:['参道中央为神明的通道，请走两侧。先在手水舍净手，然后进行“两拜二拍手一拜”。境内禁止饮食休息。拍照时请注意。'],
+          ko:['참도의 중앙은 신의 길입니다. 옆을 걸으세요. 손을 씻고 “두 번 인사, 두 번 박수, 한 번 인사”로 참배하세요. 경내에서는 식사·휴식 금지, 촬영 주의.']
+          }
       },
       'komachidori': {
-        name: { ja:'小町通り', en:'Komachi Street', zh:'小町通', ko:'코마치 거리' },
-        description: { ja:'散策', en:'Stroll', zh:'散步', ko:'산책' },
-        tips: {
-          ja:['食べ歩きは自粛推奨。購入品は店舗の指定場所で。'],
-          en:['Refrain from eating while walking. Eat at designated spots.'],
+          name: { ja:'小町通り', en:'Komachi Street', zh:'小町通', ko:'코마치 거리' },
+          description: { ja:'散策', en:'Stroll', zh:'散步', ko:'산책' },
+          tips: {
+          ja:['食べ歩きは自粛推奨。購入品は店舗の指定場所でいただきましょう。'],
+          en:['Walking while eating is discouraged. Please eat purchased items at the designated spots.'],
           zh:['建议避免边走边吃，请在店铺指定处用餐。'],
-          ko:['음식을 들고 걸어 먹지 않는 것을 권장합니다. 지정된 장소에서 드세요.']
-        }
+          ko:['걸으면서 먹는 것은 자제해주세요. 지정된 장소에서 드세요.']
+          }
       },
       'to-wadazuka': {
-        name: { ja:'鎌倉駅 → 和田塚駅', en:'Kamakura → Wadazuka (Enoden)', zh:'镰仓站 → 和田塚站', ko:'가마쿠라역 → 와다즈카역 (에노덴)' },
-        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
-        tips: { ja:[], en:[], zh:[], ko:[] }
+          name: { ja:'鎌倉駅 → 和田塚駅', en:'Kamakura → Wadazuka (Enoden)', zh:'镰仓站 → 和田塚站', ko:'가마쿠라역 → 와다즈카역 (에노덴)' },
+          description: { ja:'江ノ電で移動', en:'Travel by Enoden (train)', zh:'乘江之电移动', ko:'에노덴으로 이동' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
       'wadazuka': {
-        name: { ja:'和田塚', en:'Wadazuka', zh:'和田塚', ko:'와다즈카' },
-        description: { ja:'【マイナー】 史跡見学', en:'[Lesser-known] Historical site visit', zh:'【偏僻】 史迹参观', ko:'【소규모】 사적 관람' },
-        tips: {
-          ja:['静かな住宅街。大声を出さず、史跡や柵に腰掛けない。'],
-          en:['Quiet residential area. Keep noise down and do not sit on ruins or fences.'],
-          zh:['安静的住宅区，请保持安静并勿坐在史迹或栏杆上。'],
-          ko:['조용한 주택가입니다. 큰 소리를 내지 말고 유적이나 울타리에 앉지 마세요.']
-        }
+          name: { ja:'和田塚', en:'Wadazuka', zh:'和田塚', ko:'와다즈카' },
+          description: { ja:'【マイナー】 史跡見学', en:'[Lesser-known] Historical site visit', zh:'【偏僻】 史迹参观', ko:'【소규모】 사적 관람' },
+          tips: {
+          ja:['静かな住宅街の中にある史跡です。大声を出さず、史跡や柵に腰掛けないでください。'],
+          en:['A historic site in a quiet residential area. Keep your voice low and do not sit on fences or ruins.'],
+          zh:['位于安静住宅区的史迹，请勿喧哗或坐在栏杆上。'],
+          ko:['조용한 주택가에 있는 사적입니다. 큰 소리를 내지 말고 울타리에 앉지 마세요.']
+          }
       },
-      'hoshinoi': {
-        name: { ja:'星の井 (ほしのい)', en:'Hoshinoi (Soba)', zh:'星之井（荞麦面）', ko:'호시노이 (소바)' },
-        description: { ja:'昼食（そば）', en:'Lunch (soba)', zh:'午餐（荞麦面）', ko:'점심 (소바)' },
-        tips: {
-          ja:['観光客が少ない場所でゆっくり昼食に最適。長時間の通話は控えめに。'],
-          en:['A quiet spot suitable for a relaxed lunch. Please avoid long phone conversations.'],
-          zh:['适合悠闲午餐的安静地点，请避免长时间通话。'],
-          ko:['관광객이 적은 편으로 여유롭게 점심 먹기 좋습니다. 장시간 통화 자제 권장.']
-        }
+      'yoridokoro': {
+          name: { ja:'ヨリドコロ 由比ガ浜大通り店', en:'Yoridokoro Yuigahama-Oodori Branch', zh:'Yoridokoro 由比滨大通店', ko:'요리도코로 유이가하마오오도리점' },
+          description: { ja:'昼食（焼き魚定食）', en:'Lunch (grilled fish set meal)', zh:'午餐（烤鱼定食）', ko:'점심 (생선구이 정식)' },
+          tips: {
+          ja:['ふわふわの焼き魚やこだわり卵を使用した卵かけご飯が美味しいお店です。店内でのお電話はお控えください。'],
+          en:['A restaurant known for fluffy grilled fish and rich egg rice. Please refrain from talking on the phone inside.'],
+          zh:['以松软烤鱼和精选鸡蛋盖饭闻名的餐厅。请避免在店内通话。'],
+          ko:['부드러운 생선구이와 달걀 덮밥이 인기인 가게입니다. 매장 내 통화는 삼가 주세요.']
+          }
       },
       'to-hase': {
-        name: { ja:'和田塚駅 → 長谷駅', en:'Wadazuka → Hase (Enoden)', zh:'和田塚站 → 长谷站', ko:'와다즈카역 → 하세역 (에노덴)' },
-        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
-        tips: { ja:[], en:[], zh:[], ko:[] }
+          name: { ja:'和田塚駅 → 長谷駅', en:'Wadazuka → Hase (Enoden)', zh:'和田塚站 → 长谷站', ko:'와다즈카역 → 하세역 (에노덴)' },
+          description: { ja:'江ノ電で移動', en:'Travel by Enoden (train)', zh:'乘江之电移动', ko:'에노덴으로 이동' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
       'mushinan': {
-        name: { ja:'無心庵', en:'Mushinan (Cafe)', zh:'无心庵（茶馆）', ko:'무신안 (카페)' },
-        description: { ja:'休憩・甘味', en:'Rest / Sweets', zh:'休息・甜点', ko:'휴식・단과' },
-        tips: {
-          ja:['店内や線路付近の撮影は他のお客様と電車の安全に配慮。'],
-          en:['When photographing, be mindful of other customers and train safety near tracks.'],
-          zh:['拍照时请注意其他顾客与铁道安全。'],
-          ko:['내부 및 선로 근처 촬영 시 다른 고객 및 열차 안전을 유의하세요.']
-        }
+          name: { ja:'無心庵', en:'Mushinan (Cafe)', zh:'无心庵（茶馆）', ko:'무신안 (카페)' },
+          description: { ja:'休憩・甘味', en:'Rest / Sweets', zh:'休息・甜点', ko:'휴식・단과' },
+          tips: {
+          ja:['美味しいあんみつなど和菓子が食べられます。江ノ電を眺めながら休憩できます。店内や線路付近の撮影は他のお客様と電車の安全に配慮。'],
+          en:['Enjoy Japanese sweets such as anmitsu while watching the Enoden trains. Please be considerate when taking photos near the tracks.'],
+          zh:['可边欣赏江之电列车边享用日式甜点。拍照时请注意其他顾客与列车安全。'],
+          ko:['에노덴 열차를 보며 단과를 즐길 수 있습니다. 선로 근처 촬영 시 주의하세요.']
+          }
       },
       'kotokuin': {
-        name: { ja:'鎌倉大仏殿 高徳院', en:'Kamakura Daibutsu (Kotoku-in)', zh:'镰仓大佛殿 高德院', ko:'가마쿠라 대불 고토쿠인' },
-        description: { ja:'拝観', en:'Temple viewing', zh:'参观', ko:'참배' },
-        tips: {
+          name: { ja:'鎌倉大仏殿 高徳院', en:'Kamakura Daibutsu (Kotoku-in)', zh:'镰仓大佛殿 高德院', ko:'가마쿠라 대불 고토쿠인' },
+          description: { ja:'【有名】 拝観', en:'[Famous] Temple visit', zh:'【有名】 参观', ko:'【유명】 참배' },
+          tips: {
           ja:['寺院は拍手せず静かに合掌し一礼。胎内は撮影禁止の場合あり。'],
-          en:['At temples, do not clap; quietly put hands together and bow. Interior photography may be restricted.'],
-          zh:['在寺院请安静合十致礼，胎内拍照可能被禁止。'],
-          ko:['사원에서는 박수 대신 합장 후 고개 숙여 참배하세요. 내부 촬영 금지일 수 있음.']
-        }
+          en:['Do not clap at the temple. Quietly put your hands together and bow. Photography inside the statue may be prohibited.'],
+          zh:['在寺院请勿拍手。合十鞠躬即可。佛像内部可能禁止拍照。'],
+          ko:['사원에서는 박수치지 말고 합장 후 조용히 인사하세요. 내부는 촬영금지일 수 있습니다.']
+          }
       },
       'goryo': {
-        name: { ja:'御霊神社（ごりょうじんじゃ）', en:'Goryo Shrine', zh:'御灵神社', ko:'고료 신사' },
-        description: { ja:'参拝・江ノ電撮影', en:'Shrine visit & Enoden photo spot', zh:'参拜・江之电拍照点', ko:'참배・에노덴 촬영 포인트' },
-        tips: {
+          name: { ja:'御霊神社（ごりょうじんじゃ）', en:'Goryo Shrine', zh:'御灵神社', ko:'고료 신사' },
+          description: { ja:'【マイナー】 参拝・江ノ電撮影', en:'[Lesser-known] Shrine visit & Enoden photo spot', zh:'【偏僻】 参拜・江之电拍照点', ko:'【소규모】 참배·에노덴 촬영' },
+          tips: {
           ja:['線路内立入禁止。自撮り棒・三脚禁止。境内は撮影禁止の場合あり。'],
-          en:['Do not enter the tracks. Selfie sticks and tripods are prohibited. Some areas may forbid photography.'],
-          zh:['禁止进入铁轨。禁止使用自拍杆与三脚架。境内部分区域可能禁止拍照。'],
-          ko:['선로 침입 금지. 셀카봉 및 삼각대 금지. 경내 일부 촬영 금지일 수 있음.']
-        }
+          en:['Do not enter the tracks. Selfie sticks and tripods are prohibited. Some shrine areas may restrict photography.'],
+          zh:['禁止进入铁轨。禁止使用自拍杆和三脚架。境内部分区域可能禁止拍照。'],
+          ko:['선로 침입 금지. 셀카봉 및 삼각대 금지. 일부 지역은 촬영 금지일 수 있습니다.']
+          }
       },
       'to-inamura': {
-        name: { ja:'長谷駅 → 稲村ヶ崎駅', en:'Hase → Inamuragasaki (Enoden)', zh:'长谷站 → 稻村崎站', ko:'하세역 → 이나무라가사키역 (에노덴)' },
-        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
-        tips: { ja:[], en:[], zh:[], ko:[] }
+          name: { ja:'長谷駅 → 稲村ヶ崎駅', en:'Hase → Inamuragasaki (Enoden)', zh:'长谷站 → 稻村崎站', ko:'하세역 → 이나무라가사키역 (에노덴)' },
+          description: { ja:'江ノ電で移動', en:'Travel by Enoden (train)', zh:'乘江之电移动', ko:'에노덴으로 이동' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
       'inamuragasaki': {
-        name: { ja:'稲村ヶ崎公園', en:'Inamuragasaki Park', zh:'稻村崎公园', ko:'이나무라가사키 공원' },
-        description: { ja:'散策・写真撮影', en:'Stroll & photo spot', zh:'散步・拍照', ko:'산책・사진 촬영' },
-        tips: {
-          ja:['夕景が特に美しい。ゴミは必ず持ち帰る。'],
-          en:['The sunset view is particularly beautiful. Please take your trash home.'],
-          zh:['夕景尤为美丽，请务必带走垃圾。'],
-          ko:['석양 경치가 아름답습니다. 쓰레기는 반드시 가져가세요.']
-        }
+          name: { ja:'稲村ヶ崎公園', en:'Inamuragasaki Park', zh:'稻村崎公园', ko:'이나무라가사키 공원' },
+          description: { ja:'【マイナービュー】 散策・写真撮影', en:'[Minor view] Walk & photography', zh:'【偏僻景点】 散步・拍照', ko:'【작은 전망】 산책·사진' },
+          tips: {
+          ja:['海と江ノ島を同時に見ることができます。夕日も綺麗です。ゴミは必ず持ち帰る。'],
+          en:['You can view both the sea and Enoshima. The sunset is beautiful. Please take your trash home.'],
+          zh:['可同时看到大海与江之岛。夕阳很美，请带走垃圾。'],
+          ko:['바다와 에노시마를 함께 볼 수 있습니다. 노을이 아름답습니다. 쓰레기는 반드시 가져가세요.']
+          }
       },
       'to-enoshima-st': {
-        name: { ja:'稲村ヶ崎駅 → 江ノ島駅', en:'Inamuragasaki → Enoshima (Enoden)', zh:'稻村崎站 → 江之岛站', ko:'이나무라가사키역 → 에노시마역 (에노덴)' },
-        description: { ja:'江ノ電で移動', en:'Move by Enoden (train)', zh:'搭乘江之电移动', ko:'에노덴으로 이동' },
-        tips: { ja:[], en:[], zh:[], ko:[] }
+          name: { ja:'稲村ヶ崎駅 → 江ノ島駅', en:'Inamuragasaki → Enoshima (Enoden)', zh:'稻村崎站 → 江之岛站', ko:'이나무라가사키역 → 에노시마역 (에노덴)' },
+          description: { ja:'江ノ電で移動', en:'Travel by Enoden (train)', zh:'乘江之电移动', ko:'에노덴으로 이동' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
       'walk-enoshima': {
-        name: { ja:'江ノ島へ移動', en:'Walk to Enoshima', zh:'步行前往江之岛', ko:'에노시마까지 도보 이동' },
-        description: { ja:'徒歩', en:'Walk', zh:'步行', ko:'도보' },
-        tips: { ja:[], en:[], zh:[], ko:[] }
+          name: { ja:'江ノ島へ移動', en:'Walk to Enoshima', zh:'步行前往江之岛', ko:'에노시마까지 도보 이동' },
+          description: { ja:'徒歩', en:'Walk', zh:'步行', ko:'도보' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
-      'sea-candle': {
-        name: { ja:'サムエル・コッキング苑 / シーキャンドル', en:'Samuel Cocking Garden / Sea Candle', zh:'塞缪尔·考金苑 / 海烛塔', ko:'사무엘 코킹 정원 / 씨 캔들' },
-        description: { ja:'展望・夕景', en:'Observation & sunset', zh:'观景・夕景', ko:'전망・석양' },
-        tips: {
-          ja:['イベント期間は21:00まで延長あり。エスカー利用で体力温存。'],
-          en:['During events it may be open until 21:00. Use the Escar to save energy.'],
-          zh:['活动期间可能开放至21:00。可使用电梯节省体力。'],
-          ko:['이벤트 기간에는 21:00까지 연장되는 경우가 있습니다. 에스카를 이용해 체력 절약.']
-        }
+      'walk-enoshima_2': {
+          name: { ja:'江ノ島頂上へ', en:'Walk to Enoshima summit', zh:'步行前往江之岛顶', ko:'에노시마 정상으로 도보' },
+          description: { ja:'徒歩', en:'Walk', zh:'步行', ko:'도보' },
+          tips: { ja:[], en:[], zh:[], ko:[] }
       },
       'iwaya': {
-        name: { ja:'江ノ島岩屋', en:'Enoshima Iwaya Caves', zh:'江之岛岩屋（洞窟）', ko:'에노시마 이와야 (동굴)' },
-        description: { ja:'洞窟体験', en:'Cave experience', zh:'洞穴体验', ko:'동굴 체험' },
-        tips: {
-          ja:['夏期は18:00最終入場の場合あり。足元に注意。'],
-          en:['In summer last entry may be 18:00. Watch your step.'],
+          name: { ja:'江ノ島岩屋', en:'Enoshima Iwaya Caves', zh:'江之岛岩屋（洞窟）', ko:'에노시마 이와야 (동굴)' },
+          description: { ja:'【マイナー】 洞窟体験', en:'[Minor] Cave experience', zh:'【偏僻】 洞穴体验', ko:'【소규모】 동굴 체험' },
+          tips: {
+          ja:['夏期は18:00最終入場の場合あり。足元に注意してください。'],
+          en:['During summer, the last entry may be 18:00. Watch your step.'],
           zh:['夏季最晚入场可能为18:00，请注意脚下安全。'],
-          ko:['여름에는 최종 입장이 18:00일 수 있습니다. 발밑 주의하세요.']
-        }
+          ko:['여름에는 18:00이 최종 입장일 수 있습니다. 발밑에 주의하세요.']
+          }
+      },
+      'sea-candle': {
+          name: { ja:'サムエル・コッキング苑 / シーキャンドル', en:'Samuel Cocking Garden / Sea Candle', zh:'塞缪尔·考金苑 / 海烛塔', ko:'사무엘 코킹 정원 / 씨 캔들' },
+          description: { ja:'【有名】 展望・夕景', en:'[Famous] View & sunset', zh:'【有名】 观景・夕景', ko:'【유명】 전망·석양' },
+          tips: {
+          ja:['イベント期間は21:00まで延長あり。綺麗にライトアップされたタワーや庭園が広がっています。'],
+          en:['During event periods, open until 21:00. The illuminated tower and gardens are beautiful.'],
+          zh:['活动期间可能延长至21:00。亮灯后的塔与庭园十分漂亮。'],
+          ko:['이벤트 기간에는 21:00까지 연장됩니다. 조명이 켜진 타워와 정원이 아름답습니다.']
+          }
       },
       'il-chianti': {
-        name: { ja:'イル・キャンティ', en:'Il Chianti (Italian)', zh:'イル・キャンティ（意大利餐厅）', ko:'일 킨티 (이탈리안)' },
-        description: { ja:'夕食（イタリアン）', en:'Dinner (Italian)', zh:'晚餐（意大利菜）', ko:'저녁 (이탈리안)' },
-        tips: {
-          ja:['人気店のため予約推奨。同エリア内で移動効率良。'],
-          en:['Popular spot—reservation recommended. Efficient within this area.'],
-          zh:['人气店铺，建议预约。区域内移动效率良好。'],
-          ko:['인기 가게로 예약 권장. 동지역 내 이동 효율적.']
-        }
+          name: { ja:'イル・キャンティ', en:'Il Chianti (Italian Restaurant)', zh:'イル・キャンティ（意大利餐厅）', ko:'일 킨티 (이탈리안 레스토랑)' },
+          description: { ja:'【ピンポイント店】 夕食（イタリアン）', en:'[Spotlight] Dinner (Italian)', zh:'【精选】 晚餐（意大利菜）', ko:'【추천】 저녁 (이탈리안)' },
+          tips: {
+          ja:['人気店のため少し待つかも。江ノ島駅の近くなのでアクセスも抜群。'],
+          en:['It’s a popular restaurant, so you may wait a bit. Located near Enoshima Station with great access.'],
+          zh:['因人气高，可能需要稍等。靠近江之岛站，交通便利。'],
+          ko:['인기 있는 식당이므로 약간 기다릴 수도 있습니다. 에노시마역 근처라 접근성이 좋습니다.']
+          }
       },
       'goal-enoshima': {
-        name: { ja:'江ノ島駅', en:'Enoshima Station', zh:'江之岛站', ko:'에노시마역' },
-        description: { ja:'ゴール', en:'Goal / End', zh:'终点', ko:'골' },
-        tips: { ja:['帰路へ。お疲れ様でした！'], en:['Return home. Thanks for traveling!'], zh:['返回。旅途愉快！'], ko:['귀가 경로로 이동. 수고하셨습니다!'] }
+          name: { ja:'江ノ島駅', en:'Enoshima Station', zh:'江之岛站', ko:'에노시마역' },
+          description: { ja:'ゴール', en:'Goal', zh:'终点', ko:'골' },
+          tips: {
+          ja:['帰路へ。お疲れ様でした！鎌倉・江ノ島観光は楽しめましたか？'],
+          en:['Return home. Thank you for visiting! Did you enjoy Kamakura and Enoshima?'],
+          zh:['返程。旅途愉快！镰仓・江之岛之行还满意吗？'],
+          ko:['귀가 경로입니다. 수고하셨습니다! 가마쿠라·에노시마 여행 즐거우셨나요?']
+          }
       }
-    };
+      };
 
     // Demo coupons
     const DEMO_COUPONS = [
-      { id: "c1", title: {ja:"エスカー割引券",en:"Escar Discount",zh:"电扶梯折扣券",ko:"에스카 할인권"}, description: {ja:"エスカー利用料金10%OFF",en:"10% off Escar fee",zh:"电扶梯费用9折",ko:"에스카 이용 요금 10% 할인"}, discount: "10%OFF", validUntil: "2025-12-31", spotName: "江島神社", used: false },
-      { id: "c2", title: {ja:"セット券割引",en:"Set Ticket Discount",zh:"套票折扣",ko:"세트권 할인"}, description: {ja:"シーキャンドル＋コッキング苑100円OFF",en:"100 JPY off Sea Candle + Garden",zh:"海烛塔+考金苑减100日元",ko:"씨캔들+가든 100엔 할인"}, discount: "¥100OFF", validUntil: "2025-12-31", spotName: "江ノ島シーキャンドル", used: false }
-    ];
+    { 
+      id: "c1", 
+      title: {
+        ja:"ヨリドコロ 由比ガ浜大通り店 ワンドリンクプレゼント",
+        en:"Yoridocoro Yuigahama Odori Store: Free Drink",
+        zh:"Yoridocoro由比滨大通店：免费饮品",
+        ko:"요리도코로 유이가하마 오도리점: 무료 음료"
+      }, 
+      description: {
+        ja:"ワンドリンクプレゼント (一部対象外あり)",
+        en:"One complimentary drink (some exclusions apply)",
+        zh:"赠送一杯饮品（部分商品除外）",
+        ko:"음료 1잔 증정 (일부 제외 품목 있음)"
+      }, 
+      discount: "Free Drink", 
+      validUntil: "2025-12-31", 
+      spotName: "ヨリドコロ 由比ガ浜大通り店", 
+      used: false 
+    },
+    { 
+      id: "c2", 
+      title: {
+        ja:"イルキャンティ ワンドリンクプレゼント",
+        en:"Il Chianti: Free Drink",
+        zh:"Il Chianti：免费饮品",
+        ko:"일 키안티: 무료 음료"
+      }, 
+      description: {
+        ja:"ワンドリンクプレゼント (一部対象外あり)",
+        en:"One complimentary drink (some exclusions apply)",
+        zh:"赠送一杯饮品（部分商品除外）",
+        ko:"음료 1잔 증정 (일부 제외 품목 있음)"
+      }, 
+      discount: "Free Drink", 
+      validUntil: "2025-12-31", 
+      spotName: "イルキャンティ", 
+      used: false 
+    },
+    { 
+      id: "c3", 
+      title: {
+        ja:"岩屋 入場料割引",
+        en:"Iwaya Caves Admission Discount",
+        zh:"岩屋门票折扣",
+        ko:"이와야 동굴 입장료 할인"
+      }, 
+      description: {
+        ja:"岩屋 入場料 100円オフ",
+        en:"100 JPY off Iwaya Caves admission fee",
+        zh:"岩屋门票减100日元",
+        ko:"이와야 동굴 입장료 100엔 할인"
+      }, 
+      discount: "¥100OFF", 
+      validUntil: "2025-12-31", 
+      spotName: "岩屋", 
+      used: false 
+    },
+    { 
+      id: "c4", 
+      title: {
+        ja:"お土産割引クーポン",
+        en:"Souvenir Discount Coupon",
+        zh:"纪念品折扣券",
+        ko:"기념품 할인 쿠폰"
+      }, 
+      description: {
+        ja:"お土産 300円オフ",
+        en:"300 JPY off souvenirs (purchase limit may apply)",
+        zh:"纪念品减300日元（可能设有购买限制）",
+        ko:"기념품 300엔 할인"
+      }, 
+      discount: "¥300OFF", 
+      validUntil: "2025-12-31", 
+      spotName: "指定のお土産店舗", 
+      used: false 
+    }
+  ];
 
     // STEPS (preserve original order & keys)
     const STEPS = [
